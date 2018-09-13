@@ -89,7 +89,11 @@ Timezone usPT(usPDT, usPST);
 
 String HEWEATHER_APP_ID = "d72b42bcfc994cfe9099eddc9647c6f2";
 String HEWEATHER_LANGUAGE = "zh"; // zh for Chinese, en for English
+#if USE_WIFI_MANAGER > 0
+String HEWEATHER_LOCATION = "auto_ip"; // Get location from IP address
+#else
 String HEWEATHER_LOCATION = "CN101210202"; // Changxing
+#endif
 String HEWEATHER_LOCATION1 = "US3290117";
 String HEWEATHER_LOCATION2 = "US5392171";
 const uint8_t MAX_FORECASTS = 7; // do not change this
@@ -221,6 +225,7 @@ void setup() {
 #if USE_WIFI_MANAGER > 0
   WiFi.persistent(true);
   WiFiManager wifiManager;
+  wifiManager.setConfigPortalTimeout(600);
   wifiManager.autoConnect("IBEClock12864-HW");
   Serial.println("Please connect WiFi IBEClock12864-HW");
 #else
@@ -343,11 +348,19 @@ void draw(void) {
   }
   else if (draw_state >= 2 && draw_state < 4)
   {
+#if USE_WIFI_MANAGER == 0
     drawWorldLocation(display, "纽约", usET, currentWeather1);
+#else
+    drawLocal(display);
+#endif
   }
   else if (draw_state >= 4 && draw_state < 6)
   {
+#if USE_WIFI_MANAGER == 0
     drawWorldLocation(display, "弗利蒙", usPT, currentWeather2);
+#else
+    drawLocal(display);
+#endif
   }
   else if (draw_state >= 6 && draw_state < 8)
   {
