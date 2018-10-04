@@ -99,7 +99,7 @@ String HEWEATHER_LOCATION1 = "US3290117";
 String HEWEATHER_LOCATION2 = "US5392171";
 const uint8_t MAX_FORECASTS = 7; // do not change this
 
-const String WDAY_NAMES[] = {"星期天", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"};
+const String WDAY_NAMES[] = {"鏄熸湡澶�", "鏄熸湡涓�", "鏄熸湡浜�", "鏄熸湡涓�", "鏄熸湡鍥�", "鏄熸湡浜�", "鏄熸湡鍏�"};
 
 HeWeatherCurrentData currentWeather;
 HeWeatherCurrentData currentWeather1;
@@ -112,7 +112,7 @@ HeWeatherForecastData forecasts[MAX_FORECASTS];
 HeWeatherForecast forecastClient;
 
 // 4 CS, 5 SID(data), 6 CLK, 17 RST(Reset)
-U8G2_ST7920_128X64_1_SW_SPI display(U8G2_R0, /* clo  ck=*/ 14 /* A4 */ , /* data=*/ 12 /* A2 */, /* CS=*/ 13 /* A3 */, /* reset=*/ 16); // 16, U8X8_PIN_NONE
+U8G2_ST7920_128X64_F_SW_SPI display(U8G2_R0, /* clo  ck=*/ 14 /* A4 */ , /* data=*/ 12 /* A2 */, /* CS=*/ 13 /* A3 */, /* reset=*/ 16); // 16, U8X8_PIN_NONE
 
 time_t nowTime;
 const String degree = String((char)176);
@@ -191,7 +191,7 @@ void ledyellow () {
 void setup() {
   delay(100);
   Serial.begin(115200);
-  Serial.println("Scan WIFI");
+  Serial.println("Begin");
 
 #if (DHTPIN >= 0)
   dht.begin();
@@ -223,13 +223,22 @@ void setup() {
   display.begin();
   display.setFontPosTop();
 
+  display.clearBuffer();
+  display.drawXBM(31, 0, 66, 64, garfield);
+  display.sendBuffer();
+  shortBeep();
+  delay(1000);
+
 #if USE_WIFI_MANAGER > 0
   WiFi.persistent(true);
   WiFiManager wifiManager;
   wifiManager.setConfigPortalTimeout(600);
   wifiManager.autoConnect("IBEClock12864-HW");
   Serial.println("Please connect WiFi IBEClock12864-HW");
+  drawProgress(display, "璇风敤鎵嬫満璁剧疆鏈満WIFI", "SSID IBEClock12864-HW");
 #else
+  Serial.println("Scan WIFI");
+  drawProgress(display, "姝ｅ湪鎵弿WIFI...", "");
   int intPreferredWIFI = 0;
   WiFi.persistent(false);
   WiFi.mode(WIFI_STA);
@@ -257,6 +266,7 @@ void setup() {
 
   WiFi.persistent(true);
   WiFi.begin(WIFI_SSID[intPreferredWIFI], WIFI_PWD[intPreferredWIFI]);
+  drawProgress(display, "姝ｅ湪杩炴帴WIFI", WIFI_SSID[intPreferredWIFI]);
   int WIFIcounter = intPreferredWIFI;
   while (WiFi.status() != WL_CONNECTED) {
     int counter = 0;
@@ -271,6 +281,7 @@ void setup() {
     WIFIcounter++;
     if (WIFIcounter >= numWIFIs) WIFIcounter = 0;
     WiFi.begin(WIFI_SSID[WIFIcounter], WIFI_PWD[WIFIcounter]);
+    drawProgress(display, "姝ｅ湪杩炴帴WIFI...", WIFI_SSID[WIFIcounter]);
   }
 #endif
 
@@ -278,7 +289,9 @@ void setup() {
 
   // Get time from network time service
   Serial.println("WIFI Connected");
+  drawProgress(display, "杩炴帴WIFI鎴愬姛,", "姝ｅ湪鍚屾鏃堕棿...");
   configTime(TZ_SEC, DST_SEC, "pool.ntp.org");
+  drawProgress(display, "鍚屾鏃堕棿鎴愬姛,", "姝ｅ湪鏇存柊澶╂皵鏁版嵁...");
   updateData(true);
   timeSinceLastWUpdate = millis();
   attachInterrupt(digitalPinToInterrupt(SMOKEPIN), smokeHandler, CHANGE);
@@ -303,7 +316,11 @@ void loop() {
   if (dht.read())
   {
     float fltHumidity = dht.readHumidity();
+    Serial.print("Humidity: ");
+    Serial.println(fltHumidity);
     float fltCTemp = dht.readTemperature() - 1.5;
+    Serial.print("CTemp: ");
+    Serial.println(fltCTemp);
     if (isnan(fltCTemp) || isnan(fltHumidity))
     {
     }
@@ -350,7 +367,7 @@ void draw(void) {
   else if (draw_state >= 2 && draw_state < 4)
   {
 #if SHOW_US_CITIES == 1
-    drawWorldLocation(display, "纽约", usET, currentWeather1);
+    drawWorldLocation(display, "绾界害", usET, currentWeather1);
 #else
     drawLocal(display);
 #endif
@@ -358,7 +375,7 @@ void draw(void) {
   else if (draw_state >= 4 && draw_state < 6)
   {
 #if SHOW_US_CITIES == 1
-    drawWorldLocation(display, "弗利蒙", usPT, currentWeather2);
+    drawWorldLocation(display, "寮楀埄钂�", usPT, currentWeather2);
 #else
     drawLocal(display);
 #endif
@@ -423,55 +440,55 @@ void processWeatherText(String inputText) {
   String returnText = inputText;
   returnText.trim();
   //  Serial.println(returnText);
-  if  ((returnText.indexOf("暴") >= 0) || (returnText.indexOf("雹") >= 0) || (returnText.indexOf("雾") >= 0) || (returnText.indexOf("台风") >= 0) || (returnText.indexOf("冻") >= 0))
+  if  ((returnText.indexOf("鏆�") >= 0) || (returnText.indexOf("闆�") >= 0) || (returnText.indexOf("闆�") >= 0) || (returnText.indexOf("鍙伴") >= 0) || (returnText.indexOf("鍐�") >= 0))
   {
     ledred();
   }
-  else if ((returnText.indexOf("中雨") >= 0) || (returnText.indexOf("大雨") >= 0) || (returnText.indexOf("极端") >= 0) || (returnText.indexOf("雷") >= 0))
+  else if ((returnText.indexOf("涓洦") >= 0) || (returnText.indexOf("澶ч洦") >= 0) || (returnText.indexOf("鏋佺") >= 0) || (returnText.indexOf("闆�") >= 0))
   {
     ledred();
   }
-  else if ((returnText.indexOf("小雨") >= 0) ||  (returnText.indexOf("小雪") >= 0) || (returnText.indexOf("阵雨") >= 0) || (returnText.indexOf("毛雨") >= 0) || (returnText.indexOf("细雨") >= 0) || (returnText.indexOf("雨") >= 0))
+  else if ((returnText.indexOf("灏忛洦") >= 0) ||  (returnText.indexOf("灏忛洩") >= 0) || (returnText.indexOf("闃甸洦") >= 0) || (returnText.indexOf("姣涢洦") >= 0) || (returnText.indexOf("缁嗛洦") >= 0) || (returnText.indexOf("闆�") >= 0))
   {
     ledyellow();
   }
-  else if ((returnText.indexOf("多云") >= 0) || (returnText.indexOf("晴") >= 0) || (returnText.indexOf("少云") >= 0) || (returnText.indexOf("阴") >= 0))
+  else if ((returnText.indexOf("澶氫簯") >= 0) || (returnText.indexOf("鏅�") >= 0) || (returnText.indexOf("灏戜簯") >= 0) || (returnText.indexOf("闃�") >= 0))
   {
     ledgreen();
   }
-  else if ((returnText.indexOf("有风") >= 0) || (returnText.indexOf("平静") >= 0) || (returnText.indexOf("微风") >= 0) || (returnText.indexOf("和风") >= 0))
+  else if ((returnText.indexOf("鏈夐") >= 0) || (returnText.indexOf("骞抽潤") >= 0) || (returnText.indexOf("寰") >= 0) || (returnText.indexOf("鍜岄") >= 0))
   {
     ledgreen();
   }
-  else if ((returnText.indexOf("强风") >= 0) || (returnText.indexOf("疾风") >= 0) || (returnText.indexOf("大风") >= 0))
+  else if ((returnText.indexOf("寮洪") >= 0) || (returnText.indexOf("鐤鹃") >= 0) || (returnText.indexOf("澶ч") >= 0))
   {
     ledyellow();
   }
-  else if ((returnText.indexOf("烈风") >= 0) || (returnText.indexOf("风暴") >= 0))
+  else if ((returnText.indexOf("鐑堥") >= 0) || (returnText.indexOf("椋庢毚") >= 0))
   {
     ledred();
   }
-  else if ((returnText.indexOf("狂爆风") >= 0) || (returnText.indexOf("飓") >= 0) || (returnText.indexOf("龙卷") >= 0))
+  else if ((returnText.indexOf("鐙傜垎椋�") >= 0) || (returnText.indexOf("椋�") >= 0) || (returnText.indexOf("榫欏嵎") >= 0))
   {
     ledred();
   }
-  else if ((returnText.indexOf("小雪") >= 0))
+  else if ((returnText.indexOf("灏忛洩") >= 0))
   {
     ledyellow();
   }
-  else if ((returnText.indexOf("中雪") >= 0) || (returnText.indexOf("大雪") >= 0) || (returnText.indexOf("夹雪") >= 0) || (returnText.indexOf("雨雪") >= 0) || (returnText.indexOf("阵雪") >= 0))
+  else if ((returnText.indexOf("涓洩") >= 0) || (returnText.indexOf("澶ч洩") >= 0) || (returnText.indexOf("澶归洩") >= 0) || (returnText.indexOf("闆ㄩ洩") >= 0) || (returnText.indexOf("闃甸洩") >= 0))
   {
     ledred();
   }
-  else if ((returnText.indexOf("雪") >= 0))
+  else if ((returnText.indexOf("闆�") >= 0))
   {
     ledyellow();
   }
-  else if ((returnText.indexOf("尘暴") >= 0))
+  else if ((returnText.indexOf("灏樻毚") >= 0))
   {
     ledred();
   }
-  else if ((returnText.indexOf("霾") >= 0) || (returnText.indexOf("热") >= 0) || (returnText.indexOf("冷") >= 0))
+  else if ((returnText.indexOf("闇�") >= 0) || (returnText.indexOf("鐑�") >= 0) || (returnText.indexOf("鍐�") >= 0))
   {
     ledyellow();
   }
@@ -482,7 +499,28 @@ void processWeatherText(String inputText) {
 }
 #endif
 
-void drawLocal(U8G2_ST7920_128X64_1_SW_SPI display) {
+void drawProgress(U8G2_ST7920_128X64_F_SW_SPI display, String labelLine1, String labelLine2) {
+  display.clearBuffer();
+  display.enableUTF8Print();
+  display.setFont(u8g2_font_wqy12_t_gb2312a); // u8g2_font_wqy12_t_gb2312a, u8g2_font_helvB08_tf
+  int stringWidth = 1;
+  if (labelLine1 != "")
+  {
+    stringWidth = display.getUTF8Width(string2char(labelLine1));
+    display.setCursor((128 - stringWidth) / 2, 13);
+    display.print(labelLine1);
+  }
+  if (labelLine2 != "")
+  {
+    stringWidth = display.getUTF8Width(string2char(labelLine2));
+    display.setCursor((128 - stringWidth) / 2, 36);
+    display.print(labelLine2);
+  }
+  display.disableUTF8Print();
+  display.sendBuffer();
+}
+
+void drawLocal(U8G2_ST7920_128X64_F_SW_SPI display) {
   nowTime = time(nullptr);
   struct tm* timeInfo;
   timeInfo = localtime(&nowTime);
@@ -490,14 +528,14 @@ void drawLocal(U8G2_ST7920_128X64_1_SW_SPI display) {
 
   display.enableUTF8Print();
   display.setFont(u8g2_font_wqy12_t_gb2312a); // u8g2_font_wqy12_t_gb2312a, u8g2_font_helvB08_tf
-  String stringText = String(timeInfo->tm_year + 1900) + "年" + String(timeInfo->tm_mon + 1) + "月" + String(timeInfo->tm_mday) + "日 " + WDAY_NAMES[timeInfo->tm_wday].c_str();
+  String stringText = String(timeInfo->tm_year + 1900) + "骞�" + String(timeInfo->tm_mon + 1) + "鏈�" + String(timeInfo->tm_mday) + "鏃� " + WDAY_NAMES[timeInfo->tm_wday].c_str();
   int stringWidth = display.getUTF8Width(string2char(stringText));
   display.setCursor((128 - stringWidth) / 2, 1);
   display.print(stringText);
   stringWidth = display.getUTF8Width(string2char(String(currentWeather.cond_txt)));
   display.setCursor((128 - stringWidth) / 2, 40);
   display.print(String(currentWeather.cond_txt));
-  String WindDirectionAndSpeed = windDirectionTranslate(currentWeather.wind_dir) + String(currentWeather.wind_sc) + "级";
+  String WindDirectionAndSpeed = windDirectionTranslate(currentWeather.wind_dir) + String(currentWeather.wind_sc) + "绾�";
   stringWidth = display.getUTF8Width(string2char(WindDirectionAndSpeed));
   display.setCursor((128 - stringWidth) / 2, 54);
   display.print(WindDirectionAndSpeed);
@@ -545,7 +583,7 @@ void drawLocal(U8G2_ST7920_128X64_1_SW_SPI display) {
   display.drawHLine(0, 51, 128);
 }
 
-void drawWorldLocation(U8G2_ST7920_128X64_1_SW_SPI display, String stringText, Timezone tztTimeZone, HeWeatherCurrentData currentWeather) {
+void drawWorldLocation(U8G2_ST7920_128X64_F_SW_SPI display, String stringText, Timezone tztTimeZone, HeWeatherCurrentData currentWeather) {
   time_t utc = time(nullptr) - TZ_SEC;
   TimeChangeRule *tcr;        // pointer to the time change rule, use to get the TZ abbrev
   time_t t = tztTimeZone.toLocal(utc, &tcr);
@@ -553,14 +591,14 @@ void drawWorldLocation(U8G2_ST7920_128X64_1_SW_SPI display, String stringText, T
   sprintf(buff, "%02d:%02d", hour(t), minute(t));
   display.enableUTF8Print();
   display.setFont(u8g2_font_wqy12_t_gb2312a); // u8g2_font_wqy12_t_gb2312a, u8g2_font_helvB08_tf
-  String stringTemp = stringText + String(month(t)) + "月" + String(day(t)) + "日" + " " + WDAY_NAMES[weekday(t) - 1].c_str();
+  String stringTemp = stringText + String(month(t)) + "鏈�" + String(day(t)) + "鏃�" + " " + WDAY_NAMES[weekday(t) - 1].c_str();
   int stringWidth = display.getUTF8Width(string2char(stringTemp));
   display.setCursor((128 - stringWidth) / 2, 1);
   display.print(stringTemp);
   stringWidth = display.getUTF8Width(string2char(String(currentWeather.cond_txt)));
   display.setCursor((128 - stringWidth) / 2, 40);
   display.print(String(currentWeather.cond_txt));
-  String WindDirectionAndSpeed = windDirectionTranslate(currentWeather.wind_dir) + String(currentWeather.wind_sc) + "级";
+  String WindDirectionAndSpeed = windDirectionTranslate(currentWeather.wind_dir) + String(currentWeather.wind_sc) + "绾�";
   stringWidth = display.getUTF8Width(string2char(WindDirectionAndSpeed));
   display.setCursor((128 - stringWidth) / 2, 54);
   display.print(WindDirectionAndSpeed);
@@ -585,23 +623,23 @@ void drawWorldLocation(U8G2_ST7920_128X64_1_SW_SPI display, String stringText, T
 
 String windDirectionTranslate(String stringInput) {
   String stringReturn = stringInput;
-  stringReturn.replace("N", "北");
-  stringReturn.replace("S", "南");
-  stringReturn.replace("E", "东");
-  stringReturn.replace("W", "西");
-  stringReturn.replace("无持续", "无");
+  stringReturn.replace("N", "鍖�");
+  stringReturn.replace("S", "鍗�");
+  stringReturn.replace("E", "涓�");
+  stringReturn.replace("W", "瑗�");
+  stringReturn.replace("鏃犳寔缁�", "鏃�");
   return stringReturn;
 }
 
-void drawForecast1(U8G2_ST7920_128X64_1_SW_SPI display) {
+void drawForecast1(U8G2_ST7920_128X64_F_SW_SPI display) {
   drawForecastDetails(display, 0);
 }
 
-void drawForecast2(U8G2_ST7920_128X64_1_SW_SPI display) {
+void drawForecast2(U8G2_ST7920_128X64_F_SW_SPI display) {
   drawForecastDetails(display, 1);
 }
 
-void drawForecastDetails(U8G2_ST7920_128X64_1_SW_SPI display, int dayIndex) {
+void drawForecastDetails(U8G2_ST7920_128X64_F_SW_SPI display, int dayIndex) {
   String strTempDate = String(forecasts[dayIndex].date);
   strTempDate.trim(); // 2018-08-09
   int year = (strTempDate.substring(0, 4)).toInt();
@@ -624,13 +662,13 @@ void drawForecastDetails(U8G2_ST7920_128X64_1_SW_SPI display, int dayIndex) {
 
   display.enableUTF8Print();
   display.setFont(u8g2_font_wqy12_t_gb2312a); // u8g2_font_wqy12_t_gb2312a, u8g2_font_helvB08_tf
-  String stringText = " " + String(timeInfo->tm_mon + 1) + "月" + String(timeInfo->tm_mday) + "日 " + String(WDAY_NAMES[timeInfo->tm_wday].c_str());
+  String stringText = " " + String(timeInfo->tm_mon + 1) + "鏈�" + String(timeInfo->tm_mday) + "鏃� " + String(WDAY_NAMES[timeInfo->tm_wday].c_str());
   int stringWidth = display.getUTF8Width(string2char(stringText));
   display.setCursor(0, 1);
   display.print(stringText);
 
   // each Chinese character's length is 3 in UTF-8
-  stringText = String("日:" + forecasts[dayIndex].cond_txt_d);
+  stringText = String("鏃�:" + forecasts[dayIndex].cond_txt_d);
   stringText.replace("\"", "");
   stringText.trim();
   if (stringText.length() > 21)
@@ -642,7 +680,7 @@ void drawForecastDetails(U8G2_ST7920_128X64_1_SW_SPI display, int dayIndex) {
   display.print(stringText);
 
   // each Chinese character's length is 3 in UTF-8
-  stringText = String("夜:" + forecasts[dayIndex].cond_txt_n);
+  stringText = String("澶�:" + forecasts[dayIndex].cond_txt_n);
   stringText.replace("\"", "");
   stringText.trim();
   if (stringText.length() > 21)
@@ -653,7 +691,7 @@ void drawForecastDetails(U8G2_ST7920_128X64_1_SW_SPI display, int dayIndex) {
   display.setCursor(26, 36);
   display.print(stringText);
 
-  stringText = windDirectionTranslate(String(forecasts[dayIndex].wind_dir)) + String(forecasts[dayIndex].wind_sc) + "级";
+  stringText = windDirectionTranslate(String(forecasts[dayIndex].wind_dir)) + String(forecasts[dayIndex].wind_sc) + "绾�";
   stringWidth = display.getUTF8Width(string2char(stringText));
   display.setCursor(0, 54);
   display.print(stringText);
@@ -690,4 +728,29 @@ char* string2char(String command) {
     return p;
   }
 }
+
+void shortBeep() {
+#if (USE_HIGH_ALARM > 0)
+  digitalWrite(ALARMPIN, HIGH);
+  delay(150);
+  digitalWrite(ALARMPIN, LOW);
+#else
+  digitalWrite(ALARMPIN, LOW);
+  delay(150);
+  digitalWrite(ALARMPIN, HIGH);
+#endif
+}
+
+void longBeep() {
+#if (USE_HIGH_ALARM > 0)
+  digitalWrite(ALARMPIN, HIGH);
+  delay(2000);
+  digitalWrite(ALARMPIN, LOW);
+#else
+  digitalWrite(ALARMPIN, LOW);
+  delay(2000);
+  digitalWrite(ALARMPIN, HIGH);
+#endif
+}
+
 
