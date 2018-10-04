@@ -17,6 +17,7 @@
 #include "WeatherStationFonts.h"
 
 #define USE_WIFI_MANAGER 0    // 0 to NOT use WiFi manager, 1 to use
+#define SHOW_US_CITIES 0 // 0 to NOT to show Fremont and NY, 1 to show
 #define USE_HIGH_ALARM 1      // 0 - LOW alarm sounds, 1 - HIGH alarm sounds
 #define USE_LED 1             // 0 to NOT use LEDs, 1 to use LEDs
 #define USE_OLD_LED   0       // 0 to use new type 3mm red-blue LED, 1 to use old type 5mm red-green LED
@@ -348,7 +349,7 @@ void draw(void) {
   }
   else if (draw_state >= 2 && draw_state < 4)
   {
-#if USE_WIFI_MANAGER == 0
+#if SHOW_US_CITIES == 1
     drawWorldLocation(display, "纽约", usET, currentWeather1);
 #else
     drawLocal(display);
@@ -356,7 +357,7 @@ void draw(void) {
   }
   else if (draw_state >= 4 && draw_state < 6)
   {
-#if USE_WIFI_MANAGER == 0
+#if SHOW_US_CITIES == 1
     drawWorldLocation(display, "弗利蒙", usPT, currentWeather2);
 #else
     drawLocal(display);
