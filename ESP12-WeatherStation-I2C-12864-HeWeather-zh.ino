@@ -406,15 +406,30 @@ void updateData(bool isInitialBoot) {
   nowTime = time(nullptr);
   struct tm* timeInfo;
   timeInfo = localtime(&nowTime);
-
+  if (isInitialBoot)
+  {
+    drawProgress(display, "正在更新...", "本地天气实况...");
+  }
   currentWeatherClient.updateCurrent(&currentWeather, HEWEATHER_APP_ID, HEWEATHER_LOCATION, HEWEATHER_LANGUAGE);
   delay(300);
+  if (isInitialBoot)
+  {
+    drawProgress(display, "正在更新...", "纽约天气实况...");
+  }
   currentWeatherClient1.updateCurrent(&currentWeather1, HEWEATHER_APP_ID, HEWEATHER_LOCATION1, HEWEATHER_LANGUAGE);
   delay(300);
+  if (isInitialBoot)
+  {
+    drawProgress(display, "正在更新...", "弗利蒙天气实况...");
+  }
   currentWeatherClient2.updateCurrent(&currentWeather2, HEWEATHER_APP_ID, HEWEATHER_LOCATION2, HEWEATHER_LANGUAGE);
   if (isInitialBoot || timeInfo->tm_hour == 0 || timeInfo->tm_hour == 8 || timeInfo->tm_hour == 11 || timeInfo->tm_hour == 18)
   {
     delay(300);
+    if (isInitialBoot)
+    {
+      drawProgress(display, "正在更新...", "本地天气预报...");
+    }
     int result = forecastClient.updateForecast(forecasts, HEWEATHER_APP_ID, HEWEATHER_LOCATION, HEWEATHER_LANGUAGE);
   }
   readyForWeatherUpdate = false;
