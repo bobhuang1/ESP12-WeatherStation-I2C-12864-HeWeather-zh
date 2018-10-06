@@ -301,11 +301,11 @@ void loop() {
   display.firstPage();
   do {
     draw();
-    delay(100);
+    //    delay(100);
   } while ( display.nextPage() );
   draw_state++;
   if (draw_state >= 12) draw_state = 0;
-  delay(2000);
+  //  delay(2000);
 
   if (millis() - timeSinceLastWUpdate > (1000 * UPDATE_INTERVAL_SECS)) {
     setReadyForWeatherUpdate();
