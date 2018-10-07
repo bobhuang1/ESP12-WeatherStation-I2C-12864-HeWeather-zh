@@ -517,7 +517,7 @@ void processWeatherText(String inputText) {
 void drawProgress(U8G2_ST7920_128X64_F_SW_SPI display, String labelLine1, String labelLine2) {
   display.clearBuffer();
   display.enableUTF8Print();
-  display.setFont(u8g2_font_wqy12_t_gb2312a); // u8g2_font_wqy12_t_gb2312a, u8g2_font_helvB08_tf
+  display.setFont(u8g2_font_wqy12_t_gb2312); // u8g2_font_wqy12_t_gb2312, u8g2_font_helvB08_tf
   int stringWidth = 1;
   if (labelLine1 != "")
   {
@@ -542,7 +542,7 @@ void drawLocal(U8G2_ST7920_128X64_F_SW_SPI display) {
   char buff[20];
 
   display.enableUTF8Print();
-  display.setFont(u8g2_font_wqy12_t_gb2312a); // u8g2_font_wqy12_t_gb2312a, u8g2_font_helvB08_tf
+  display.setFont(u8g2_font_wqy12_t_gb2312); // u8g2_font_wqy12_t_gb2312, u8g2_font_helvB08_tf
   String stringText = String(timeInfo->tm_year + 1900) + "年" + String(timeInfo->tm_mon + 1) + "月" + String(timeInfo->tm_mday) + "日 " + WDAY_NAMES[timeInfo->tm_wday].c_str();
   int stringWidth = display.getUTF8Width(string2char(stringText));
   display.setCursor((128 - stringWidth) / 2, 1);
@@ -605,7 +605,7 @@ void drawWorldLocation(U8G2_ST7920_128X64_F_SW_SPI display, String stringText, T
   char buff[5];
   sprintf(buff, "%02d:%02d", hour(t), minute(t));
   display.enableUTF8Print();
-  display.setFont(u8g2_font_wqy12_t_gb2312a); // u8g2_font_wqy12_t_gb2312a, u8g2_font_helvB08_tf
+  display.setFont(u8g2_font_wqy12_t_gb2312); // u8g2_font_wqy12_t_gb2312, u8g2_font_helvB08_tf
   String stringTemp = stringText + String(month(t)) + "月" + String(day(t)) + "日" + " " + WDAY_NAMES[weekday(t) - 1].c_str();
   int stringWidth = display.getUTF8Width(string2char(stringTemp));
   display.setCursor((128 - stringWidth) / 2, 1);
@@ -676,7 +676,7 @@ void drawForecastDetails(U8G2_ST7920_128X64_F_SW_SPI display, int dayIndex) {
   timeInfo = localtime(&observationTimestamp);
 
   display.enableUTF8Print();
-  display.setFont(u8g2_font_wqy12_t_gb2312a); // u8g2_font_wqy12_t_gb2312a, u8g2_font_helvB08_tf
+  display.setFont(u8g2_font_wqy12_t_gb2312); // u8g2_font_wqy12_t_gb2312, u8g2_font_helvB08_tf
   String stringText = " " + String(timeInfo->tm_mon + 1) + "月" + String(timeInfo->tm_mday) + "日 " + String(WDAY_NAMES[timeInfo->tm_wday].c_str());
   int stringWidth = display.getUTF8Width(string2char(stringText));
   display.setCursor(0, 1);
