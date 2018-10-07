@@ -97,7 +97,7 @@ String HEWEATHER_LOCATION = "CN101210202"; // Changxing
 #endif
 String HEWEATHER_LOCATION1 = "US3290117";
 String HEWEATHER_LOCATION2 = "US5392171";
-const uint8_t MAX_FORECASTS = 7; // do not change this
+const uint8_t MAX_FORECASTS = 5; // do not change this
 
 const String WDAY_NAMES[] = {"星期天", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"};
 
