@@ -16,16 +16,16 @@
 #include "WeatherStationImages.h"
 #include "WeatherStationFonts.h"
 
-#define USE_WIFI_MANAGER 0    // 0 to NOT use WiFi manager, 1 to use
-#define SHOW_US_CITIES 0 // 0 to NOT to show Fremont and NY, 1 to show
-#define USE_HIGH_ALARM 1      // 0 - LOW alarm sounds, 1 - HIGH alarm sounds
-#define USE_LED 1             // 0 to NOT use LEDs, 1 to use LEDs
-#define USE_OLD_LED   0       // 0 to use new type 3mm red-blue LED, 1 to use old type 5mm red-green LED
+//#define USE_WIFI_MANAGER     // disable to NOT use WiFi manager, enable to use
+//#define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show
+#define USE_HIGH_ALARM       // disable - LOW alarm sounds, enable - HIGH alarm sounds
+#define USE_LED              // diable to NOT use LEDs, enable to use LEDs
+//#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
 
 #define DHTTYPE  DHT11       // Sensor type DHT11/21/22/AM2301/AM2302
 #define SMOKEPIN   2
 
-#if (USE_LED > 0)
+#ifdef USE_LED
 #define DHTPIN   4
 #define ALARMPIN 5
 #else
@@ -33,7 +33,7 @@
 #define ALARMPIN 4
 #endif
 
-#if (USE_LED > 0)
+#ifdef USE_LED
 #define LEDRED 15
 #define LEDGREEN 0
 #endif
@@ -90,7 +90,7 @@ Timezone usPT(usPDT, usPST);
 
 String HEWEATHER_APP_ID = "d72b42bcfc994cfe9099eddc9647c6f2";
 String HEWEATHER_LANGUAGE = "zh"; // zh for Chinese, en for English
-#if USE_WIFI_MANAGER > 0
+#ifdef USE_WIFI_MANAGER
 String HEWEATHER_LOCATION = "auto_ip"; // Get location from IP address
 #else
 String HEWEATHER_LOCATION = "CN101210202"; // Changxing
@@ -128,31 +128,31 @@ void smokeHandler() {
   //  Serial.println(smokeValue);
   if (smokeValue == 1)
   {
-#if (USE_HIGH_ALARM > 0)
+#ifdef USE_HIGH_ALARM
     digitalWrite(ALARMPIN, LOW);
 #else
     digitalWrite(ALARMPIN, HIGH);
 #endif
-#if (USE_LED > 0)
+#ifdef USE_LED
     ledoff();
 #endif
     //    Serial.println("Turn off alarm");
   }
   else
   {
-#if (USE_HIGH_ALARM > 0)
+#ifdef USE_HIGH_ALARM
     digitalWrite(ALARMPIN, HIGH);
 #else
     digitalWrite(ALARMPIN, LOW);
 #endif
-#if (USE_LED > 0)
+#ifdef USE_LED
     ledred();
 #endif
     //    Serial.println("Turn on alarm");
   }
 }
 
-#if (USE_LED > 0)
+#ifdef USE_LED
 void ledoff () {
   digitalWrite(LEDGREEN, LOW);
   digitalWrite(LEDRED, LOW);
@@ -160,7 +160,7 @@ void ledoff () {
 
 void ledred () {
   ledoff();
-#if (USE_OLD_LED > 0)
+#ifdef USE_OLD_LED
   analogWrite(LEDRED, 128);
 #else
   analogWrite(LEDRED, 100);
@@ -169,7 +169,7 @@ void ledred () {
 
 void ledgreen () {
   ledoff();
-#if (USE_OLD_LED > 0)
+#ifdef USE_OLD_LED
   digitalWrite(LEDGREEN, HIGH);
 #else
   analogWrite(LEDGREEN, 100);
@@ -178,7 +178,7 @@ void ledgreen () {
 
 void ledyellow () {
   ledoff();
-#if (USE_OLD_LED > 0)
+#ifdef USE_OLD_LED
   analogWrite(LEDRED, 128);
   digitalWrite(LEDGREEN, HIGH);
 #else
@@ -199,13 +199,13 @@ void setup() {
 
   pinMode(SMOKEPIN, INPUT);
   pinMode(ALARMPIN, OUTPUT);
-#if (USE_HIGH_ALARM > 0)
+#ifdef USE_HIGH_ALARM
   digitalWrite(ALARMPIN, LOW); // Turn off alarm
 #else
   digitalWrite(ALARMPIN, HIGH); // Turn off alarm
 #endif
 
-#if (USE_LED > 0)
+#ifdef USE_LED
   pinMode(LEDRED, OUTPUT);
 
   pinMode(LEDGREEN, OUTPUT);
@@ -229,16 +229,16 @@ void setup() {
   shortBeep();
   delay(1000);
 
-#if USE_WIFI_MANAGER > 0
+#ifdef USE_WIFI_MANAGER
   WiFi.persistent(true);
   WiFiManager wifiManager;
   wifiManager.setConfigPortalTimeout(600);
   wifiManager.autoConnect("IBEClock12864-HW");
   Serial.println("Please connect WiFi IBEClock12864-HW");
-  drawProgress(display, "请用手机设置本机WIFI", "SSID IBEClock12864-HW");
+  drawProgress("请用手机设置本机WIFI", "SSID IBEClock12864-HW");
 #else
   Serial.println("Scan WIFI");
-  drawProgress(display, "正在扫描WIFI...", "");
+  drawProgress("正在扫描WIFI...", "");
   int intPreferredWIFI = 0;
   WiFi.persistent(false);
   WiFi.mode(WIFI_STA);
@@ -266,7 +266,7 @@ void setup() {
 
   WiFi.persistent(true);
   WiFi.begin(WIFI_SSID[intPreferredWIFI], WIFI_PWD[intPreferredWIFI]);
-  drawProgress(display, "正在连接WIFI...", WIFI_SSID[intPreferredWIFI]);
+  drawProgress("正在连接WIFI...", WIFI_SSID[intPreferredWIFI]);
   int WIFIcounter = intPreferredWIFI;
   while (WiFi.status() != WL_CONNECTED) {
     int counter = 0;
@@ -281,7 +281,7 @@ void setup() {
     WIFIcounter++;
     if (WIFIcounter >= numWIFIs) WIFIcounter = 0;
     WiFi.begin(WIFI_SSID[WIFIcounter], WIFI_PWD[WIFIcounter]);
-    drawProgress(display, "正在连接WIFI...", WIFI_SSID[WIFIcounter]);
+    drawProgress("正在连接WIFI...", WIFI_SSID[WIFIcounter]);
   }
 #endif
 
@@ -289,9 +289,9 @@ void setup() {
 
   // Get time from network time service
   Serial.println("WIFI Connected");
-  drawProgress(display, "连接WIFI成功,", "正在同步时间...");
+  drawProgress("连接WIFI成功,", "正在同步时间...");
   configTime(TZ_SEC, DST_SEC, "pool.ntp.org");
-  drawProgress(display, "同步时间成功,", "正在更新天气数据...");
+  drawProgress("同步时间成功,", "正在更新天气数据...");
   updateData(true);
   timeSinceLastWUpdate = millis();
   attachInterrupt(digitalPinToInterrupt(SMOKEPIN), smokeHandler, CHANGE);
@@ -362,35 +362,35 @@ void draw(void) {
   //    display.drawXBM(31, 0, 66, 64, garfield);
   if (draw_state >= 0 && draw_state < 2)
   {
-    drawLocal(display);
+    drawLocal();
   }
   else if (draw_state >= 2 && draw_state < 4)
   {
-#if SHOW_US_CITIES == 1
-    drawWorldLocation(display, "纽约", usET, currentWeather1);
+#ifdef SHOW_US_CITIES
+    drawWorldLocation("纽约", usET, currentWeather1);
 #else
-    drawLocal(display);
+    drawLocal();
 #endif
   }
   else if (draw_state >= 4 && draw_state < 6)
   {
-#if SHOW_US_CITIES == 1
-    drawWorldLocation(display, "弗利蒙", usPT, currentWeather2);
+#ifdef SHOW_US_CITIES
+    drawWorldLocation("弗利蒙", usPT, currentWeather2);
 #else
-    drawLocal(display);
+    drawLocal();
 #endif
   }
   else if (draw_state >= 6 && draw_state < 8)
   {
-    drawForecastDetails(display, 0 + forecastBase);
+    drawForecastDetails(0 + forecastBase);
   }
   else if (draw_state >= 8 && draw_state < 10)
   {
-    drawForecastDetails(display, 1 + forecastBase);
+    drawForecastDetails(1 + forecastBase);
   }
   else if (draw_state >= 10 && draw_state < 12)
   {
-    drawForecastDetails(display, 2 + forecastBase);
+    drawForecastDetails(2 + forecastBase);
   }
   else if (draw_state >= 12)
   {
@@ -398,7 +398,7 @@ void draw(void) {
   }
   else
   {
-    drawLocal(display);
+    drawLocal();
   }
 }
 
@@ -408,19 +408,19 @@ void updateData(bool isInitialBoot) {
   timeInfo = localtime(&nowTime);
   if (isInitialBoot)
   {
-    drawProgress(display, "正在更新...", "本地天气实况...");
+    drawProgress("正在更新...", "本地天气实况...");
   }
   currentWeatherClient.updateCurrent(&currentWeather, HEWEATHER_APP_ID, HEWEATHER_LOCATION, HEWEATHER_LANGUAGE);
   delay(300);
   if (isInitialBoot)
   {
-    drawProgress(display, "正在更新...", "纽约天气实况...");
+    drawProgress("正在更新...", "纽约天气实况...");
   }
   currentWeatherClient1.updateCurrent(&currentWeather1, HEWEATHER_APP_ID, HEWEATHER_LOCATION1, HEWEATHER_LANGUAGE);
   delay(300);
   if (isInitialBoot)
   {
-    drawProgress(display, "正在更新...", "弗利蒙天气实况...");
+    drawProgress("正在更新...", "弗利蒙天气实况...");
   }
   currentWeatherClient2.updateCurrent(&currentWeather2, HEWEATHER_APP_ID, HEWEATHER_LOCATION2, HEWEATHER_LANGUAGE);
   if (isInitialBoot || timeInfo->tm_hour == 0 || timeInfo->tm_hour == 8 || timeInfo->tm_hour == 11 || timeInfo->tm_hour == 18)
@@ -428,7 +428,7 @@ void updateData(bool isInitialBoot) {
     delay(300);
     if (isInitialBoot)
     {
-      drawProgress(display, "正在更新...", "本地天气预报...");
+      drawProgress("正在更新...", "本地天气预报...");
     }
     int result = forecastClient.updateForecast(forecasts, HEWEATHER_APP_ID, HEWEATHER_LOCATION, HEWEATHER_LANGUAGE);
   }
@@ -450,7 +450,7 @@ String chooseMeteocon(String stringInput) {
   }
 }
 
-#if (USE_LED > 0)
+#ifdef USE_LED
 void processWeatherText(String inputText) {
   String returnText = inputText;
   returnText.trim();
@@ -514,7 +514,7 @@ void processWeatherText(String inputText) {
 }
 #endif
 
-void drawProgress(U8G2_ST7920_128X64_F_SW_SPI display, String labelLine1, String labelLine2) {
+void drawProgress(String labelLine1, String labelLine2) {
   display.clearBuffer();
   display.enableUTF8Print();
   display.setFont(u8g2_font_wqy12_t_gb2312); // u8g2_font_wqy12_t_gb2312, u8g2_font_helvB08_tf
@@ -535,7 +535,7 @@ void drawProgress(U8G2_ST7920_128X64_F_SW_SPI display, String labelLine1, String
   display.sendBuffer();
 }
 
-void drawLocal(U8G2_ST7920_128X64_F_SW_SPI display) {
+void drawLocal() {
   nowTime = time(nullptr);
   struct tm* timeInfo;
   timeInfo = localtime(&nowTime);
@@ -555,7 +555,7 @@ void drawLocal(U8G2_ST7920_128X64_F_SW_SPI display) {
   display.setCursor((128 - stringWidth) / 2, 54);
   display.print(WindDirectionAndSpeed);
   display.disableUTF8Print();
-#if (USE_LED > 0)
+#ifdef USE_LED
   processWeatherText(String(currentWeather.cond_txt));
 #endif
   display.setFont(u8g2_font_helvR24_tn); // u8g2_font_inb21_ mf, u8g2_font_helvR24_tn
@@ -598,7 +598,7 @@ void drawLocal(U8G2_ST7920_128X64_F_SW_SPI display) {
   display.drawHLine(0, 51, 128);
 }
 
-void drawWorldLocation(U8G2_ST7920_128X64_F_SW_SPI display, String stringText, Timezone tztTimeZone, HeWeatherCurrentData currentWeather) {
+void drawWorldLocation(String stringText, Timezone tztTimeZone, HeWeatherCurrentData currentWeather) {
   time_t utc = time(nullptr) - TZ_SEC;
   TimeChangeRule *tcr;        // pointer to the time change rule, use to get the TZ abbrev
   time_t t = tztTimeZone.toLocal(utc, &tcr);
@@ -646,15 +646,15 @@ String windDirectionTranslate(String stringInput) {
   return stringReturn;
 }
 
-void drawForecast1(U8G2_ST7920_128X64_F_SW_SPI display) {
-  drawForecastDetails(display, 0);
+void drawForecast1() {
+  drawForecastDetails(0);
 }
 
-void drawForecast2(U8G2_ST7920_128X64_F_SW_SPI display) {
-  drawForecastDetails(display, 1);
+void drawForecast2() {
+  drawForecastDetails(1);
 }
 
-void drawForecastDetails(U8G2_ST7920_128X64_F_SW_SPI display, int dayIndex) {
+void drawForecastDetails(int dayIndex) {
   String strTempDate = String(forecasts[dayIndex].date);
   strTempDate.trim(); // 2018-08-09
   int year = (strTempDate.substring(0, 4)).toInt();
@@ -745,7 +745,7 @@ char* string2char(String command) {
 }
 
 void shortBeep() {
-#if (USE_HIGH_ALARM > 0)
+#ifdef USE_HIGH_ALARM
   digitalWrite(ALARMPIN, HIGH);
   delay(150);
   digitalWrite(ALARMPIN, LOW);
@@ -757,7 +757,7 @@ void shortBeep() {
 }
 
 void longBeep() {
-#if (USE_HIGH_ALARM > 0)
+#ifdef USE_HIGH_ALARM
   digitalWrite(ALARMPIN, HIGH);
   delay(2000);
   digitalWrite(ALARMPIN, LOW);
