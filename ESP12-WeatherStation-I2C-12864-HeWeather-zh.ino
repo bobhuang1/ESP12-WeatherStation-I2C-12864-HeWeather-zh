@@ -102,11 +102,14 @@ const uint8_t MAX_FORECASTS = 5; // do not change this
 const String WDAY_NAMES[] = {"星期天", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"};
 
 HeWeatherCurrentData currentWeather;
+HeWeatherCurrent currentWeatherClient;
+
+#ifdef SHOW_US_CITIES
 HeWeatherCurrentData currentWeather1;
 HeWeatherCurrentData currentWeather2;
-HeWeatherCurrent currentWeatherClient;
 HeWeatherCurrent currentWeatherClient1;
 HeWeatherCurrent currentWeatherClient2;
+#endif
 
 HeWeatherForecastData forecasts[MAX_FORECASTS];
 HeWeatherForecast forecastClient;
@@ -411,6 +414,8 @@ void updateData(bool isInitialBoot) {
     drawProgress("正在更新...", "本地天气实况...");
   }
   currentWeatherClient.updateCurrent(&currentWeather, HEWEATHER_APP_ID, HEWEATHER_LOCATION, HEWEATHER_LANGUAGE);
+
+#ifdef SHOW_US_CITIES
   delay(300);
   if (isInitialBoot)
   {
@@ -423,6 +428,8 @@ void updateData(bool isInitialBoot) {
     drawProgress("正在更新...", "弗利蒙天气实况...");
   }
   currentWeatherClient2.updateCurrent(&currentWeather2, HEWEATHER_APP_ID, HEWEATHER_LOCATION2, HEWEATHER_LANGUAGE);
+#endif
+  
   if (isInitialBoot || timeInfo->tm_hour == 0 || timeInfo->tm_hour == 8 || timeInfo->tm_hour == 11 || timeInfo->tm_hour == 18)
   {
     delay(300);
@@ -598,6 +605,7 @@ void drawLocal() {
   display.drawHLine(0, 51, 128);
 }
 
+#ifdef SHOW_US_CITIES
 void drawWorldLocation(String stringText, Timezone tztTimeZone, HeWeatherCurrentData currentWeather) {
   time_t utc = time(nullptr) - TZ_SEC;
   TimeChangeRule *tcr;        // pointer to the time change rule, use to get the TZ abbrev
@@ -635,6 +643,7 @@ void drawWorldLocation(String stringText, Timezone tztTimeZone, HeWeatherCurrent
   display.setFont(Meteocon21);
   display.drawStr(98, 17, string2char(String(currentWeather.iconMeteoCon).substring(0, 1)));
 }
+#endif
 
 String windDirectionTranslate(String stringInput) {
   String stringReturn = stringInput;
