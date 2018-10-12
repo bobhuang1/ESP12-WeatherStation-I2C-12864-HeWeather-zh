@@ -22,6 +22,7 @@
 #define USE_HIGH_ALARM       // disable - LOW alarm sounds, enable - HIGH alarm sounds
 #define USE_LED              // diable to NOT use LEDs, enable to use LEDs
 //#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
+const String SMOKE_ALARM_LOCATION = "5th Floor Kitchen";
 
 #define DHTTYPE  DHT11       // Sensor type DHT11/21/22/AM2301/AM2302
 #define SMOKEPIN   2
@@ -153,8 +154,14 @@ void smokeHandler() {
     ledred();
 #endif
 
+    nowTime = time(nullptr);
+    struct tm* timeInfo;
+    timeInfo = localtime(&nowTime);
+    String completeDateTime = String(timeInfo->tm_hour) + ":" + String(timeInfo->tm_min) + ":" + String(timeInfo->tm_sec) + " " +  String(timeInfo->tm_year + 1900) + "-" + String(timeInfo->tm_mon + 1) + "-" + String(timeInfo->tm_mday);
+    String emailMessage = "Smoke Alarm " + completeDateTime + " At " + SMOKE_ALARM_LOCATION;
+
     SendEmail e("mail.ibegroup.net", 587, "relay@mail.ibegroup.com", "password", 60000, true);
-    e.send("hbh@ibegroup.com", "hbh@ibegroup.com", "Smoke Alarm Subject", "message");
+    e.send("hbh@ibegroup.com", "hbh@ibegroup.com", emailMessage, emailMessage);
 
     //    Serial.println("Turn on alarm");
   }
