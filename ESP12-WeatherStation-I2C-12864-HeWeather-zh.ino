@@ -11,6 +11,7 @@
 #include <U8g2lib.h>
 #include <SPI.h>
 #include <WiFiManager.h>
+#include "sendemail.h"
 #include "HeWeatherCurrent.h"
 #include "HeWeatherForecast.h"
 #include "WeatherStationImages.h"
@@ -151,6 +152,10 @@ void smokeHandler() {
 #ifdef USE_LED
     ledred();
 #endif
+
+    SendEmail e("mail.ibegroup.net", 587, "relay@mail.ibegroup.com", "password", 60000, true);
+    e.send("hbh@ibegroup.com", "hbh@ibegroup.com", "Smoke Alarm Subject", "message");
+
     //    Serial.println("Turn on alarm");
   }
 }
@@ -429,7 +434,7 @@ void updateData(bool isInitialBoot) {
   }
   currentWeatherClient2.updateCurrent(&currentWeather2, HEWEATHER_APP_ID, HEWEATHER_LOCATION2, HEWEATHER_LANGUAGE);
 #endif
-  
+
   if (isInitialBoot || timeInfo->tm_hour == 0 || timeInfo->tm_hour == 8 || timeInfo->tm_hour == 11 || timeInfo->tm_hour == 18)
   {
     delay(300);
