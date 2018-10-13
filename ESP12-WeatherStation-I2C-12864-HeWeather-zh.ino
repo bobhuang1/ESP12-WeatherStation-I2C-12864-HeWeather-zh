@@ -13,8 +13,7 @@
 #include <WiFiManager.h>
 #include "HeWeatherCurrent.h"
 #include "HeWeatherForecast.h"
-#include "WeatherStationImages.h"
-#include "WeatherStationFonts.h"
+#include "GarfieldCommon.h"
 
 //#define DEBUG
 //#define USE_WIFI_MANAGER     // disable to NOT use WiFi manager, enable to use
@@ -22,7 +21,8 @@
 #define USE_HIGH_ALARM       // disable - LOW alarm sounds, enable - HIGH alarm sounds
 #define USE_LED              // diable to NOT use LEDs, enable to use LEDs
 //#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
-const String SMOKE_ALARM_LOCATION = "Office Front Door"; // Office Server Room, Office Big Room, Office Office
+#define LANGUAGE_CN  // LANGUAGE_CN or LANGUAGE_EN
+const String SMOKE_ALARM_LOCATION = "1st Foor Server Room"; // Office Server Room, Office Big Room, Office Office
 #define DUMMY_MODE
 #define SEND_ALARM_EMAIL
 
@@ -42,23 +42,33 @@ const String SMOKE_ALARM_LOCATION = "Office Front Door"; // Office Server Room, 
 #define LEDGREEN 0
 #endif
 
-const char CompileDate[] = __DATE__;
-const char* WIFI_SSID[] = {"ibehome", "ibetest", "ibehomen", "TYCP", "Tenda_301"};
-const char* WIFI_PWD[] = {"tianwanggaidihu", "tianwanggaidihu", "tianwanggaidihu", "5107458970", "5107458970"};
-#define numWIFIs (sizeof(WIFI_SSID)/sizeof(char *))
-#define WIFI_TRY 30
-
-#define TZ              8       // (utc+) TZ in hours
-#define DST_MN          0      // use 60mn for summer time in some countries
-#define TZ_MN           ((TZ)*60)
-#define TZ_SEC          ((TZ)*3600)
-#define DST_SEC         ((DST_MN)*60)
-#define UPDATE_INTERVAL_SECS 20 * 60 // Update every 20 minutes
-
 #if (DHTPIN >= 0)
 DHT dht(DHTPIN, DHTTYPE);
 #endif
 
+#ifdef LANGUAGE_CN
+const String HEWEATHER_LANGUAGE = "zh"; // zh for Chinese, en for English
+#else ifdef LANGUAGE_EN
+const String HEWEATHER_LANGUAGE = "en"; // zh for Chinese, en for English
+#endif
+
+#ifdef USE_WIFI_MANAGER
+const String HEWEATHER_LOCATION = "auto_ip"; // Get location from IP address
+#else
+const String HEWEATHER_LOCATION = "CN101210202"; // Changxing
+#endif
+#ifdef SHOW_US_CITIES
+const String HEWEATHER_LOCATION1 = "US3290117";
+const String HEWEATHER_LOCATION2 = "US5392171";
+#endif
+
+#ifdef LANGUAGE_CN
+const String WDAY_NAMES[] = { "星期天", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六" };
+#else ifdef LANGUAGE_EN
+const String WDAY_NAMES[] = { "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT" };
+#endif
+
+#ifdef SHOW_US_CITIES
 // Japan, Tokyo
 TimeChangeRule japanRule = {"Japan", Last, Sun, Mar, 1, 540};     // Japan
 Timezone Japan(japanRule);
@@ -91,19 +101,7 @@ Timezone usAZ(usMST);
 TimeChangeRule usPDT = {"PDT", Second, Sun, Mar, 2, -420};
 TimeChangeRule usPST = {"PST", First, Sun, Nov, 2, -480};
 Timezone usPT(usPDT, usPST);
-
-String HEWEATHER_APP_ID = "d72b42bcfc994cfe9099eddc9647c6f2";
-String HEWEATHER_LANGUAGE = "zh"; // zh for Chinese, en for English
-#ifdef USE_WIFI_MANAGER
-String HEWEATHER_LOCATION = "auto_ip"; // Get location from IP address
-#else
-String HEWEATHER_LOCATION = "CN101210202"; // Changxing
 #endif
-String HEWEATHER_LOCATION1 = "US3290117";
-String HEWEATHER_LOCATION2 = "US5392171";
-const uint8_t MAX_FORECASTS = 5; // do not change this
-
-const String WDAY_NAMES[] = {"星期天", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"};
 
 HeWeatherCurrentData currentWeather;
 HeWeatherCurrent currentWeatherClient;
@@ -129,20 +127,19 @@ uint8_t draw_state = 0;
 float previousTemp = 0;
 float previousHumidity = 0;
 
-volatile boolean checkInterrupt = false;
-
-unsigned long debounceTime = 1000;
-unsigned long lastDebounce = 0;
+volatile boolean smokeCheckInterrupt = false;
+unsigned long smokeDebounceTime = 0;
+unsigned long smokeLastDebounce = 0;
 
 void smokeHandler() {
-  checkInterrupt = true;
+  smokeCheckInterrupt = true;
 }
 
-void checkInterruptSub() {
-  if (checkInterrupt == true && ( (millis() - lastDebounce)  > debounceTime ))
+void smokeCheckInterruptSub() {
+  if (smokeCheckInterrupt == true && ( (millis() - smokeLastDebounce)  > smokeDebounceTime ))
   {
-    lastDebounce = millis();
-    checkInterrupt = false;
+    smokeLastDebounce = millis();
+    smokeCheckInterrupt = false;
     int smokeValue = digitalRead(SMOKEPIN);
 
     if (smokeValue == 1)
@@ -158,7 +155,7 @@ void checkInterruptSub() {
 #endif
 
 #ifdef SEND_ALARM_EMAIL
-      SMTPSend("Off");
+      SMTPSend("Off", SMOKE_ALARM_LOCATION);
 #endif
     }
     else
@@ -173,13 +170,13 @@ void checkInterruptSub() {
 #endif
 
 #ifdef SEND_ALARM_EMAIL
-      SMTPSend("On");
+      SMTPSend("On", SMOKE_ALARM_LOCATION);
 #endif
     }
   }
   else
   {
-    checkInterrupt = false;
+    smokeCheckInterrupt = false;
   }
 }
 
@@ -232,11 +229,13 @@ void setup() {
 
   pinMode(SMOKEPIN, INPUT);
   pinMode(ALARMPIN, OUTPUT);
+  noBeep(ALARMPIN,
 #ifdef USE_HIGH_ALARM
-  digitalWrite(ALARMPIN, LOW); // Turn off alarm
+         true
 #else
-  digitalWrite(ALARMPIN, HIGH); // Turn off alarm
+         false
 #endif
+        );
 
 #ifdef USE_LED
   pinMode(LEDRED, OUTPUT);
@@ -259,71 +258,22 @@ void setup() {
   display.clearBuffer();
   display.drawXBM(31, 0, 66, 64, garfield);
   display.sendBuffer();
-  shortBeep();
+  shortBeep(ALARMPIN,
+#ifdef USE_HIGH_ALARM
+            true
+#else
+            false
+#endif
+           );
   delay(1000);
 
+  connectWIFI(
 #ifdef USE_WIFI_MANAGER
-  WiFi.persistent(true);
-  WiFiManager wifiManager;
-  wifiManager.setConfigPortalTimeout(600);
-  wifiManager.autoConnect("IBEClock12864-HW");
-#ifdef DEBUG
-  Serial.println("Please connect WiFi IBEClock12864-HW");
-#endif  
-  drawProgress("请用手机设置本机WIFI", "SSID IBEClock12864-HW");
+    true
 #else
-
-#ifdef DEBUG
-  Serial.println("Scan WIFI");
-#endif  
-  drawProgress("正在扫描WIFI...", "");
-  int intPreferredWIFI = 0;
-  WiFi.persistent(false);
-  WiFi.mode(WIFI_STA);
-  WiFi.disconnect();
-
-  int n = WiFi.scanNetworks();
-  if (n == 0)
-  {
-  }
-  else
-  {
-    for (int i = 0; i < n; ++i)
-    {
-      for (int j = 0; j < numWIFIs; j++)
-      {
-        if (strcmp(WIFI_SSID[j], string2char(WiFi.SSID(i))) == 0)
-        {
-          intPreferredWIFI = j;
-          break;
-        }
-      }
-    }
-  }
-#ifdef DEBUG
-  Serial.println("Connect WIFI");
+    false
 #endif
-
-  WiFi.persistent(true);
-  WiFi.begin(WIFI_SSID[intPreferredWIFI], WIFI_PWD[intPreferredWIFI]);
-  drawProgress("正在连接WIFI...", WIFI_SSID[intPreferredWIFI]);
-  int WIFIcounter = intPreferredWIFI;
-  while (WiFi.status() != WL_CONNECTED) {
-    int counter = 0;
-    while (counter < WIFI_TRY && WiFi.status() != WL_CONNECTED)
-    {
-      if (WiFi.status() == WL_CONNECTED) break;
-      delay(500);
-      if (WiFi.status() == WL_CONNECTED) break;
-      counter++;
-    }
-    if (WiFi.status() == WL_CONNECTED) break;
-    WIFIcounter++;
-    if (WIFIcounter >= numWIFIs) WIFIcounter = 0;
-    WiFi.begin(WIFI_SSID[WIFIcounter], WIFI_PWD[WIFIcounter]);
-    drawProgress("正在连接WIFI...", WIFI_SSID[WIFIcounter]);
-  }
-#endif
+  );
 
   if (WiFi.status() != WL_CONNECTED) ESP.restart();
 
@@ -340,11 +290,10 @@ void setup() {
 }
 
 void loop() {
-  checkInterruptSub();
+  smokeCheckInterruptSub();
   display.firstPage();
   do {
     draw();
-    //    delay(100);
   } while ( display.nextPage() );
   draw_state++;
   if (draw_state >= 12) draw_state = 0;
@@ -487,21 +436,6 @@ void updateData(bool isInitialBoot) {
   }
 #endif
   readyForWeatherUpdate = false;
-}
-
-String chooseMeteocon(String stringInput) {
-  nowTime = time(nullptr);
-  struct tm* timeInfo;
-  timeInfo = localtime(&nowTime);
-
-  if (timeInfo->tm_hour > 6 && timeInfo->tm_hour < 18)
-  {
-    return stringInput.substring(0, 1);
-  }
-  else
-  {
-    return stringInput.substring(1, 2);
-  }
 }
 
 #ifdef USE_LED
@@ -691,16 +625,6 @@ void drawWorldLocation(String stringText, Timezone tztTimeZone, HeWeatherCurrent
 }
 #endif
 
-String windDirectionTranslate(String stringInput) {
-  String stringReturn = stringInput;
-  stringReturn.replace("N", "北");
-  stringReturn.replace("S", "南");
-  stringReturn.replace("E", "东");
-  stringReturn.replace("W", "西");
-  stringReturn.replace("无持续", "无");
-  return stringReturn;
-}
-
 void drawForecast1() {
   drawForecastDetails(0);
 }
@@ -791,227 +715,4 @@ void drawForecastDetails(int dayIndex) {
 void setReadyForWeatherUpdate() {
   readyForWeatherUpdate = true;
 }
-
-char* string2char(String command) {
-  if (command.length() != 0) {
-    char *p = const_cast<char*>(command.c_str());
-    return p;
-  }
-}
-
-void shortBeep() {
-#ifdef USE_HIGH_ALARM
-  digitalWrite(ALARMPIN, HIGH);
-  delay(150);
-  digitalWrite(ALARMPIN, LOW);
-#else
-  digitalWrite(ALARMPIN, LOW);
-  delay(150);
-  digitalWrite(ALARMPIN, HIGH);
-#endif
-}
-
-void longBeep() {
-#ifdef USE_HIGH_ALARM
-  digitalWrite(ALARMPIN, HIGH);
-  delay(2000);
-  digitalWrite(ALARMPIN, LOW);
-#else
-  digitalWrite(ALARMPIN, LOW);
-  delay(2000);
-  digitalWrite(ALARMPIN, HIGH);
-#endif
-}
-
-#ifdef SEND_ALARM_EMAIL
-void SMTPSend(String statusMessage) {
-  nowTime = time(nullptr);
-  struct tm* timeInfo;
-  timeInfo = localtime(&nowTime);
-  String completeDateTime = String(timeInfo->tm_hour) + ":" + String(timeInfo->tm_min) + ":" + String(timeInfo->tm_sec) + " " +  String(timeInfo->tm_year + 1900) + "-" + String(timeInfo->tm_mon + 1) + "-" + String(timeInfo->tm_mday);
-  String emailMessage = String("Subject: ") + String("Smoke Alarm ") + statusMessage + " " + completeDateTime + String(" At ") + SMOKE_ALARM_LOCATION + String("\r\n\r\n") + String("Smoke Alarm ") + statusMessage + " " + completeDateTime + String(" At ") + SMOKE_ALARM_LOCATION + String("\r\n\r\n");
-
-#ifdef DEBUG
-  Serial.println(emailMessage);
-#endif
-
-  if (SMTPSendMail(emailMessage) == 1)
-  {
-#ifdef DEBUG
-    Serial.println("Email sent success!");
-#endif
-  }
-  else
-  {
-#ifdef DEBUG
-    Serial.println("Email sent failed!");
-#endif
-  }
-}
-
-byte SMTPSendMail(String message)
-{
-  WiFiClient client;
-
-  byte thisByte = 0;
-  byte respCode;
-
-#ifdef DEBUG
-  Serial.println(F("connect to email server"));
-#endif
-
-  int retryCounter = 0;
-  while (!client.connect("mail.gopherking.com", 587) == 1) {
-#ifdef DEBUG
-    Serial.println(".");
-#endif
-    delay(1000);
-    retryCounter++;
-    if (retryCounter > 10) {
-#ifdef DEBUG
-      Serial.println(F("connection failed"));
-#endif
-      return 0;
-    }
-  }
-  if (!SMTPReceive(client)) return 0;
-#ifdef DEBUG
-  Serial.println(F("connected"));
-  Serial.println(F("Sending hello"));
-#endif
-  // replace 1.2.3.4 with your Arduino's ip
-  client.println("EHLO mail.gopherking.com");
-  if (!SMTPReceive(client)) return 0;
-
-#ifdef DEBUG
-  Serial.println(F("Sending auth login"));
-#endif
-  client.println("auth login");
-  if (!SMTPReceive(client)) return 0;
-
-#ifdef DEBUG
-  Serial.println(F("Sending User"));
-#endif
-  client.println("aWJlcmVsYXlAZ29waGVya2luZy5uZXQ=");
-
-  if (!SMTPReceive(client)) return 0;
-
-#ifdef DEBUG
-  Serial.println(F("Sending Password"));
-#endif
-  client.println("QURJWjU1MDA=");
-
-  if (!SMTPReceive(client)) return 0;
-
-  // change to your email address (sender)
-#ifdef DEBUG
-  Serial.println(F("Sending From"));
-#endif
-  client.println("MAIL From: <hbh@gopherking.net>");
-  if (!SMTPReceive(client)) return 0;
-
-  // change to recipient address
-#ifdef DEBUG
-  Serial.println(F("Sending To"));
-#endif
-  client.println("RCPT To: <hbh@ibegroup.com>");
-  if (!SMTPReceive(client)) return 0;
-
-#ifdef DEBUG
-  Serial.println(F("Sending DATA"));
-#endif
-  client.println("DATA");
-  if (!SMTPReceive(client)) return 0;
-
-#ifdef DEBUG
-  Serial.println(F("Sending email"));
-#endif
-
-  // change to recipient address
-  client.println("To: Smoke Alarm <hbh@ibegroup.com>");
-
-  // change to your address
-  client.println("From: Bob Huang <hbh@gopherking.net>");
-  client.println(message);
-  client.println(".");
-  if (!SMTPReceive(client)) return 0;
-#ifdef DEBUG
-  Serial.println(F("Sending QUIT"));
-#endif
-  client.println("QUIT");
-  if (!SMTPReceive(client)) return 0;
-  client.stop();
-#ifdef DEBUG
-  Serial.println(F("disconnected"));
-#endif
-  return 1;
-}
-
-byte SMTPReceive(WiFiClient client)
-{
-  byte respCode;
-  byte thisByte;
-  int loopCount = 0;
-
-  while (!client.available()) {
-    delay(1);
-    loopCount++;
-
-    // if nothing received for 10 seconds, timeout
-    if (loopCount > 30000) {
-      client.stop();
-#ifdef DEBUG
-      Serial.println(F("\r\nTimeout"));
-#endif
-      return 0;
-    }
-  }
-
-  respCode = client.peek();
-  while (client.available())
-  {
-    thisByte = client.read();
-#ifdef DEBUG
-    Serial.write(thisByte);
-#endif
-  }
-  if (respCode >= '4')
-  {
-    SMTPFail(client);
-    return 0;
-  }
-  return 1;
-}
-
-
-void SMTPFail(WiFiClient client)
-{
-  byte thisByte = 0;
-  int loopCount = 0;
-  client.println(F("QUIT"));
-  while (!client.available()) {
-    delay(1);
-    loopCount++;
-    // if nothing received for 10 seconds, timeout
-    if (loopCount > 30000) {
-      client.stop();
-#ifdef DEBUG
-      Serial.println(F("\r\nTimeout"));
-#endif
-      return;
-    }
-  }
-  while (client.available())
-  {
-    thisByte = client.read();
-#ifdef DEBUG
-    Serial.write(thisByte);
-#endif
-  }
-  client.stop();
-#ifdef DEBUG
-  Serial.println(F("disconnected"));
-#endif
-}
-#endif
 
