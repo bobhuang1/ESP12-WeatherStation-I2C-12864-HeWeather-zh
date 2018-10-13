@@ -11,18 +11,20 @@
 #include <U8g2lib.h>
 #include <SPI.h>
 #include <WiFiManager.h>
-#include "sendemail.h"
 #include "HeWeatherCurrent.h"
 #include "HeWeatherForecast.h"
 #include "WeatherStationImages.h"
 #include "WeatherStationFonts.h"
 
+#define DEBUG
 //#define USE_WIFI_MANAGER     // disable to NOT use WiFi manager, enable to use
 //#define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show
 #define USE_HIGH_ALARM       // disable - LOW alarm sounds, enable - HIGH alarm sounds
 #define USE_LED              // diable to NOT use LEDs, enable to use LEDs
 //#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
-const String SMOKE_ALARM_LOCATION = "5th Floor Kitchen";
+const String SMOKE_ALARM_LOCATION = "Office Front Door"; // Office Server Room, Office Big Room, Office Office
+#define DUMMY_MODE
+#define SEND_ALARM_EMAIL
 
 #define DHTTYPE  DHT11       // Sensor type DHT11/21/22/AM2301/AM2302
 #define SMOKEPIN   2
@@ -131,6 +133,14 @@ void smokeHandler() {
   int smokeValue = digitalRead(SMOKEPIN);
   //  Serial.print("Smoke interrupt: ");
   //  Serial.println(smokeValue);
+
+#ifdef SEND_ALARM_EMAIL
+  nowTime = time(nullptr);
+  struct tm* timeInfo;
+  timeInfo = localtime(&nowTime);
+  String completeDateTime = String(timeInfo->tm_hour) + ":" + String(timeInfo->tm_min) + ":" + String(timeInfo->tm_sec) + " " +  String(timeInfo->tm_year + 1900) + "-" + String(timeInfo->tm_mon + 1) + "-" + String(timeInfo->tm_mday);
+#endif
+
   if (smokeValue == 1)
   {
 #ifdef USE_HIGH_ALARM
@@ -141,6 +151,15 @@ void smokeHandler() {
 #ifdef USE_LED
     ledoff();
 #endif
+
+#ifdef SEND_ALARM_EMAIL
+    String emailMessage = String("Subject: ") + String("Smoke Alarm Off ") + completeDateTime + String(" At ") + SMOKE_ALARM_LOCATION + String("\r\n") + String("Smoke Alarm Off ") + completeDateTime + String(" At ") + SMOKE_ALARM_LOCATION + String("\r\n\r\n");
+#ifdef DEBUG
+    Serial.println(emailMessage);
+#endif
+    sendEmail(emailMessage);
+#endif
+
     //    Serial.println("Turn off alarm");
   }
   else
@@ -154,14 +173,13 @@ void smokeHandler() {
     ledred();
 #endif
 
-    nowTime = time(nullptr);
-    struct tm* timeInfo;
-    timeInfo = localtime(&nowTime);
-    String completeDateTime = String(timeInfo->tm_hour) + ":" + String(timeInfo->tm_min) + ":" + String(timeInfo->tm_sec) + " " +  String(timeInfo->tm_year + 1900) + "-" + String(timeInfo->tm_mon + 1) + "-" + String(timeInfo->tm_mday);
-    String emailMessage = "Smoke Alarm " + completeDateTime + " At " + SMOKE_ALARM_LOCATION;
-
-    SendEmail e("mail.ibegroup.net", 587, "relay@mail.ibegroup.com", "password", 60000, true);
-    e.send("hbh@ibegroup.com", "hbh@ibegroup.com", emailMessage, emailMessage);
+#ifdef SEND_ALARM_EMAIL
+    String emailMessage = String("Subject: ") + String("Smoke Alarm On ") + completeDateTime + String(" At ") + SMOKE_ALARM_LOCATION + String("\r\n") + String("Smoke Alarm On ") + completeDateTime + String(" At ") + SMOKE_ALARM_LOCATION + String("\r\n\r\n");
+#ifdef DEBUG
+    Serial.println(emailMessage);
+#endif
+    sendEmail(emailMessage);
+#endif
 
     //    Serial.println("Turn on alarm");
   }
@@ -375,6 +393,9 @@ void draw(void) {
   }
 
   //    display.drawXBM(31, 0, 66, 64, garfield);
+#ifdef DUMMY_MODE
+  draw_state = 1;
+#endif
   if (draw_state >= 0 && draw_state < 2)
   {
     drawLocal();
@@ -427,6 +448,7 @@ void updateData(bool isInitialBoot) {
   }
   currentWeatherClient.updateCurrent(&currentWeather, HEWEATHER_APP_ID, HEWEATHER_LOCATION, HEWEATHER_LANGUAGE);
 
+#ifndef DUMMY_MODE
 #ifdef SHOW_US_CITIES
   delay(300);
   if (isInitialBoot)
@@ -451,6 +473,7 @@ void updateData(bool isInitialBoot) {
     }
     int result = forecastClient.updateForecast(forecasts, HEWEATHER_APP_ID, HEWEATHER_LOCATION, HEWEATHER_LANGUAGE);
   }
+#endif
   readyForWeatherUpdate = false;
 }
 
@@ -787,6 +810,137 @@ void longBeep() {
   delay(2000);
   digitalWrite(ALARMPIN, HIGH);
 #endif
+}
+
+byte sendEmail(String message)
+{
+  WiFiClient client;
+
+  byte thisByte = 0;
+  byte respCode;
+
+  if (client.connect("mail.gopherking.com", 587) == 1) {
+    Serial.println(F("connected"));
+  } else {
+    Serial.println(F("connection failed"));
+    return 0;
+  }
+
+  if (!eRcv(client)) return 0;
+
+  Serial.println(F("Sending hello"));
+  // replace 1.2.3.4 with your Arduino's ip
+  client.println("EHLO mail.gopherking.com");
+  if (!eRcv(client)) return 0;
+
+  Serial.println(F("Sending auth login"));
+  client.println("auth login");
+  if (!eRcv(client)) return 0;
+
+  Serial.println(F("Sending User"));
+  // Change to your base64 encoded user
+  client.println("aWJlcmVsYXlAZ29waGVya2luZy5uZXQ=");
+
+  if (!eRcv(client)) return 0;
+
+  Serial.println(F("Sending Password"));
+  // change to your base64 encoded password
+  client.println("QURJWjU1MDA=");
+
+  if (!eRcv(client)) return 0;
+
+  // change to your email address (sender)
+  Serial.println(F("Sending From"));
+  client.println("MAIL From: <hbh@gopherking.net>");
+  if (!eRcv(client)) return 0;
+
+  // change to recipient address
+  Serial.println(F("Sending To"));
+  client.println("RCPT To: <hbh@ibegroup.com>");
+  if (!eRcv(client)) return 0;
+
+  Serial.println(F("Sending DATA"));
+  client.println("DATA");
+  if (!eRcv(client)) return 0;
+
+  Serial.println(F("Sending email"));
+
+  // change to recipient address
+  client.println("To: Smoke Alarm <hbh@ibegroup.com>");
+
+  // change to your address
+  client.println("From: Bob Huang <hbh@gopherking.net>");
+  client.println(message);
+  client.println(".");
+  if (!eRcv(client)) return 0;
+  Serial.println(F("Sending QUIT"));
+  client.println("QUIT");
+  if (!eRcv(client)) return 0;
+  client.stop();
+  Serial.println(F("disconnected"));
+  return 1;
+
+
+}
+
+byte eRcv(WiFiClient client)
+{
+  byte respCode;
+  byte thisByte;
+  int loopCount = 0;
+
+  while (!client.available()) {
+    delay(1);
+    loopCount++;
+
+    // if nothing received for 10 seconds, timeout
+    if (loopCount > 10000) {
+      client.stop();
+      Serial.println(F("\r\nTimeout"));
+      return 0;
+    }
+  }
+
+  respCode = client.peek();
+
+  while (client.available())
+  {
+    thisByte = client.read();
+    Serial.write(thisByte);
+  }
+
+  if (respCode >= '4')
+  {
+    efail(client);
+    return 0;
+  }
+
+  return 1;
+}
+
+
+void efail(WiFiClient client)
+{
+  byte thisByte = 0;
+  int loopCount = 0;
+  client.println(F("QUIT"));
+  while (!client.available()) {
+    delay(1);
+    loopCount++;
+    // if nothing received for 10 seconds, timeout
+    if (loopCount > 15000) {
+      client.stop();
+      Serial.println(F("\r\nTimeout"));
+      return;
+    }
+  }
+  while (client.available())
+  {
+    thisByte = client.read();
+    Serial.write(thisByte);
+  }
+  client.stop();
+  Serial.println(F("disconnected"));
 }
 
 
