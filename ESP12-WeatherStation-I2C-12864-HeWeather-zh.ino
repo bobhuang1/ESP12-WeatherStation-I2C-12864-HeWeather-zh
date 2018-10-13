@@ -16,7 +16,7 @@
 #include "WeatherStationImages.h"
 #include "WeatherStationFonts.h"
 
-#define DEBUG
+//#define DEBUG
 //#define USE_WIFI_MANAGER     // disable to NOT use WiFi manager, enable to use
 //#define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show
 #define USE_HIGH_ALARM       // disable - LOW alarm sounds, enable - HIGH alarm sounds
@@ -129,59 +129,57 @@ uint8_t draw_state = 0;
 float previousTemp = 0;
 float previousHumidity = 0;
 
-void smokeHandler() {
-  int smokeValue = digitalRead(SMOKEPIN);
-  //  Serial.print("Smoke interrupt: ");
-  //  Serial.println(smokeValue);
+volatile boolean checkInterrupt = false;
 
-#ifdef SEND_ALARM_EMAIL
-  nowTime = time(nullptr);
-  struct tm* timeInfo;
-  timeInfo = localtime(&nowTime);
-  String completeDateTime = String(timeInfo->tm_hour) + ":" + String(timeInfo->tm_min) + ":" + String(timeInfo->tm_sec) + " " +  String(timeInfo->tm_year + 1900) + "-" + String(timeInfo->tm_mon + 1) + "-" + String(timeInfo->tm_mday);
+unsigned long debounceTime = 1000;
+unsigned long lastDebounce = 0;
+
+void smokeHandler() {
+  checkInterrupt = true;
+}
+
+void checkInterruptSub() {
+  if (checkInterrupt == true && ( (millis() - lastDebounce)  > debounceTime ))
+  {
+    lastDebounce = millis();
+    checkInterrupt = false;
+    int smokeValue = digitalRead(SMOKEPIN);
+
+    if (smokeValue == 1)
+    {
+#ifdef USE_HIGH_ALARM
+      digitalWrite(ALARMPIN, LOW);
+#else
+      digitalWrite(ALARMPIN, HIGH);
 #endif
 
-  if (smokeValue == 1)
-  {
+#ifdef USE_LED
+      ledoff();
+#endif
+
+#ifdef SEND_ALARM_EMAIL
+      SMTPSend("Off");
+#endif
+    }
+    else
+    {
 #ifdef USE_HIGH_ALARM
-    digitalWrite(ALARMPIN, LOW);
+      digitalWrite(ALARMPIN, HIGH);
 #else
-    digitalWrite(ALARMPIN, HIGH);
+      digitalWrite(ALARMPIN, LOW);
 #endif
 #ifdef USE_LED
-    ledoff();
+      ledred();
 #endif
 
 #ifdef SEND_ALARM_EMAIL
-    String emailMessage = String("Subject: ") + String("Smoke Alarm Off ") + completeDateTime + String(" At ") + SMOKE_ALARM_LOCATION + String("\r\n") + String("Smoke Alarm Off ") + completeDateTime + String(" At ") + SMOKE_ALARM_LOCATION + String("\r\n\r\n");
-#ifdef DEBUG
-    Serial.println(emailMessage);
+      SMTPSend("On");
 #endif
-    sendEmail(emailMessage);
-#endif
-
-    //    Serial.println("Turn off alarm");
+    }
   }
   else
   {
-#ifdef USE_HIGH_ALARM
-    digitalWrite(ALARMPIN, HIGH);
-#else
-    digitalWrite(ALARMPIN, LOW);
-#endif
-#ifdef USE_LED
-    ledred();
-#endif
-
-#ifdef SEND_ALARM_EMAIL
-    String emailMessage = String("Subject: ") + String("Smoke Alarm On ") + completeDateTime + String(" At ") + SMOKE_ALARM_LOCATION + String("\r\n") + String("Smoke Alarm On ") + completeDateTime + String(" At ") + SMOKE_ALARM_LOCATION + String("\r\n\r\n");
-#ifdef DEBUG
-    Serial.println(emailMessage);
-#endif
-    sendEmail(emailMessage);
-#endif
-
-    //    Serial.println("Turn on alarm");
+    checkInterrupt = false;
   }
 }
 
@@ -223,8 +221,10 @@ void ledyellow () {
 
 void setup() {
   delay(100);
+#ifdef DEBUG  
   Serial.begin(115200);
   Serial.println("Begin");
+#endif
 
 #if (DHTPIN >= 0)
   dht.begin();
@@ -267,10 +267,15 @@ void setup() {
   WiFiManager wifiManager;
   wifiManager.setConfigPortalTimeout(600);
   wifiManager.autoConnect("IBEClock12864-HW");
+#ifdef DEBUG
   Serial.println("Please connect WiFi IBEClock12864-HW");
+#endif  
   drawProgress("请用手机设置本机WIFI", "SSID IBEClock12864-HW");
 #else
+
+#ifdef DEBUG
   Serial.println("Scan WIFI");
+#endif  
   drawProgress("正在扫描WIFI...", "");
   int intPreferredWIFI = 0;
   WiFi.persistent(false);
@@ -295,7 +300,9 @@ void setup() {
       }
     }
   }
+#ifdef DEBUG
   Serial.println("Connect WIFI");
+#endif
 
   WiFi.persistent(true);
   WiFi.begin(WIFI_SSID[intPreferredWIFI], WIFI_PWD[intPreferredWIFI]);
@@ -321,7 +328,9 @@ void setup() {
   if (WiFi.status() != WL_CONNECTED) ESP.restart();
 
   // Get time from network time service
+#ifdef DEBUG
   Serial.println("WIFI Connected");
+#endif  
   drawProgress("连接WIFI成功,", "正在同步时间...");
   configTime(TZ_SEC, DST_SEC, "pool.ntp.org");
   drawProgress("同步时间成功,", "正在更新天气数据...");
@@ -331,6 +340,7 @@ void setup() {
 }
 
 void loop() {
+  checkInterruptSub();
   display.firstPage();
   do {
     draw();
@@ -349,11 +359,13 @@ void loop() {
   if (dht.read())
   {
     float fltHumidity = dht.readHumidity();
+    float fltCTemp = dht.readTemperature() - 1.5;
+#ifdef DEBUG
     Serial.print("Humidity: ");
     Serial.println(fltHumidity);
-    float fltCTemp = dht.readTemperature() - 1.5;
     Serial.print("CTemp: ");
     Serial.println(fltCTemp);
+#endif    
     if (isnan(fltCTemp) || isnan(fltHumidity))
     {
     }
@@ -496,7 +508,6 @@ String chooseMeteocon(String stringInput) {
 void processWeatherText(String inputText) {
   String returnText = inputText;
   returnText.trim();
-  //  Serial.println(returnText);
   if  ((returnText.indexOf("暴") >= 0) || (returnText.indexOf("雹") >= 0) || (returnText.indexOf("雾") >= 0) || (returnText.indexOf("台风") >= 0) || (returnText.indexOf("冻") >= 0))
   {
     ledred();
@@ -812,58 +823,109 @@ void longBeep() {
 #endif
 }
 
-byte sendEmail(String message)
+#ifdef SEND_ALARM_EMAIL
+void SMTPSend(String statusMessage) {
+  nowTime = time(nullptr);
+  struct tm* timeInfo;
+  timeInfo = localtime(&nowTime);
+  String completeDateTime = String(timeInfo->tm_hour) + ":" + String(timeInfo->tm_min) + ":" + String(timeInfo->tm_sec) + " " +  String(timeInfo->tm_year + 1900) + "-" + String(timeInfo->tm_mon + 1) + "-" + String(timeInfo->tm_mday);
+  String emailMessage = String("Subject: ") + String("Smoke Alarm ") + statusMessage + " " + completeDateTime + String(" At ") + SMOKE_ALARM_LOCATION + String("\r\n\r\n") + String("Smoke Alarm ") + statusMessage + " " + completeDateTime + String(" At ") + SMOKE_ALARM_LOCATION + String("\r\n\r\n");
+
+#ifdef DEBUG
+  Serial.println(emailMessage);
+#endif
+
+  if (SMTPSendMail(emailMessage) == 1)
+  {
+#ifdef DEBUG
+    Serial.println("Email sent success!");
+#endif
+  }
+  else
+  {
+#ifdef DEBUG
+    Serial.println("Email sent failed!");
+#endif
+  }
+}
+
+byte SMTPSendMail(String message)
 {
   WiFiClient client;
 
   byte thisByte = 0;
   byte respCode;
 
-  if (client.connect("mail.gopherking.com", 587) == 1) {
-    Serial.println(F("connected"));
-  } else {
-    Serial.println(F("connection failed"));
-    return 0;
+#ifdef DEBUG
+  Serial.println(F("connect to email server"));
+#endif
+
+  int retryCounter = 0;
+  while (!client.connect("mail.gopherking.com", 587) == 1) {
+#ifdef DEBUG
+    Serial.println(".");
+#endif
+    delay(1000);
+    retryCounter++;
+    if (retryCounter > 10) {
+#ifdef DEBUG
+      Serial.println(F("connection failed"));
+#endif
+      return 0;
+    }
   }
-
-  if (!eRcv(client)) return 0;
-
+  if (!SMTPReceive(client)) return 0;
+#ifdef DEBUG
+  Serial.println(F("connected"));
   Serial.println(F("Sending hello"));
+#endif
   // replace 1.2.3.4 with your Arduino's ip
   client.println("EHLO mail.gopherking.com");
-  if (!eRcv(client)) return 0;
+  if (!SMTPReceive(client)) return 0;
 
+#ifdef DEBUG
   Serial.println(F("Sending auth login"));
+#endif
   client.println("auth login");
-  if (!eRcv(client)) return 0;
+  if (!SMTPReceive(client)) return 0;
 
+#ifdef DEBUG
   Serial.println(F("Sending User"));
-  // Change to your base64 encoded user
+#endif
   client.println("aWJlcmVsYXlAZ29waGVya2luZy5uZXQ=");
 
-  if (!eRcv(client)) return 0;
+  if (!SMTPReceive(client)) return 0;
 
+#ifdef DEBUG
   Serial.println(F("Sending Password"));
-  // change to your base64 encoded password
+#endif
   client.println("QURJWjU1MDA=");
 
-  if (!eRcv(client)) return 0;
+  if (!SMTPReceive(client)) return 0;
 
   // change to your email address (sender)
+#ifdef DEBUG
   Serial.println(F("Sending From"));
+#endif
   client.println("MAIL From: <hbh@gopherking.net>");
-  if (!eRcv(client)) return 0;
+  if (!SMTPReceive(client)) return 0;
 
   // change to recipient address
+#ifdef DEBUG
   Serial.println(F("Sending To"));
+#endif
   client.println("RCPT To: <hbh@ibegroup.com>");
-  if (!eRcv(client)) return 0;
+  if (!SMTPReceive(client)) return 0;
 
+#ifdef DEBUG
   Serial.println(F("Sending DATA"));
+#endif
   client.println("DATA");
-  if (!eRcv(client)) return 0;
+  if (!SMTPReceive(client)) return 0;
 
+#ifdef DEBUG
   Serial.println(F("Sending email"));
+#endif
 
   // change to recipient address
   client.println("To: Smoke Alarm <hbh@ibegroup.com>");
@@ -872,18 +934,20 @@ byte sendEmail(String message)
   client.println("From: Bob Huang <hbh@gopherking.net>");
   client.println(message);
   client.println(".");
-  if (!eRcv(client)) return 0;
+  if (!SMTPReceive(client)) return 0;
+#ifdef DEBUG
   Serial.println(F("Sending QUIT"));
+#endif
   client.println("QUIT");
-  if (!eRcv(client)) return 0;
+  if (!SMTPReceive(client)) return 0;
   client.stop();
+#ifdef DEBUG
   Serial.println(F("disconnected"));
+#endif
   return 1;
-
-
 }
 
-byte eRcv(WiFiClient client)
+byte SMTPReceive(WiFiClient client)
 {
   byte respCode;
   byte thisByte;
@@ -894,32 +958,33 @@ byte eRcv(WiFiClient client)
     loopCount++;
 
     // if nothing received for 10 seconds, timeout
-    if (loopCount > 10000) {
+    if (loopCount > 30000) {
       client.stop();
+#ifdef DEBUG
       Serial.println(F("\r\nTimeout"));
+#endif
       return 0;
     }
   }
 
   respCode = client.peek();
-
   while (client.available())
   {
     thisByte = client.read();
+#ifdef DEBUG
     Serial.write(thisByte);
+#endif
   }
-
   if (respCode >= '4')
   {
-    efail(client);
+    SMTPFail(client);
     return 0;
   }
-
   return 1;
 }
 
 
-void efail(WiFiClient client)
+void SMTPFail(WiFiClient client)
 {
   byte thisByte = 0;
   int loopCount = 0;
@@ -928,19 +993,25 @@ void efail(WiFiClient client)
     delay(1);
     loopCount++;
     // if nothing received for 10 seconds, timeout
-    if (loopCount > 15000) {
+    if (loopCount > 30000) {
       client.stop();
+#ifdef DEBUG
       Serial.println(F("\r\nTimeout"));
+#endif
       return;
     }
   }
   while (client.available())
   {
     thisByte = client.read();
+#ifdef DEBUG
     Serial.write(thisByte);
+#endif
   }
   client.stop();
+#ifdef DEBUG
   Serial.println(F("disconnected"));
+#endif
 }
-
+#endif
 
