@@ -128,7 +128,7 @@ float previousTemp = 0;
 float previousHumidity = 0;
 
 volatile boolean smokeCheckInterrupt = false;
-unsigned long smokeDebounceTime = 0;
+unsigned long smokeDebounceTime = 1000 * 10; // 10 seconds debounce time
 unsigned long smokeLastDebounce = 0;
 
 void smokeHandler() {
