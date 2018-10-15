@@ -127,6 +127,9 @@ uint8_t draw_state = 0;
 float previousTemp = 0;
 float previousHumidity = 0;
 
+long timeSinceLastPageUpdate = 0;
+#define PAGE_UPDATE_INTERVAL 15*1000
+
 volatile boolean smokeCheckInterrupt = false;
 unsigned long smokeDebounceTime = 1000 * 10; // 10 seconds debounce time
 unsigned long smokeLastDebounce = 0;
@@ -295,9 +298,20 @@ void loop() {
   do {
     draw();
   } while ( display.nextPage() );
-  draw_state++;
+
+  if (millis() - timeSinceLastPageUpdate > PAGE_UPDATE_INTERVAL)
+  {
+    timeSinceLastPageUpdate = millis();
+    if (draw_state == 0)
+    {
+      draw_state = 1;
+    }
+    else
+    {
+      draw_state++;
+    }
+  }
   if (draw_state >= 12) draw_state = 0;
-  delay(2000);
 
   if (millis() - timeSinceLastWUpdate > (1000 * UPDATE_INTERVAL_SECS)) {
     setReadyForWeatherUpdate();
