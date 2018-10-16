@@ -129,6 +129,8 @@ float previousHumidity = 0;
 
 long timeSinceLastPageUpdate = 0;
 #define PAGE_UPDATE_INTERVAL 3*1000
+long timeSinceSystemBoot = 0;
+#define SMOKE_DISABLE_PERIOD 60*1000
 
 volatile boolean smokeCheckInterrupt = false;
 unsigned long smokeDebounceTime = 1000 * 10; // 10 seconds debounce time
@@ -139,47 +141,50 @@ void smokeHandler() {
 }
 
 void smokeCheckInterruptSub() {
-  if (smokeCheckInterrupt == true && ( (millis() - smokeLastDebounce)  > smokeDebounceTime ))
+  if ((millis() - timeSinceSystemBoot) > SMOKE_DISABLE_PERIOD)
   {
-    smokeLastDebounce = millis();
-    smokeCheckInterrupt = false;
-    int smokeValue = digitalRead(SMOKEPIN);
-
-    if (smokeValue == 1)
+    if (smokeCheckInterrupt == true && ( (millis() - smokeLastDebounce)  > smokeDebounceTime ))
     {
+      smokeLastDebounce = millis();
+      smokeCheckInterrupt = false;
+      int smokeValue = digitalRead(SMOKEPIN);
+
+      if (smokeValue == 1)
+      {
 #ifdef USE_HIGH_ALARM
-      digitalWrite(ALARMPIN, LOW);
+        digitalWrite(ALARMPIN, LOW);
 #else
-      digitalWrite(ALARMPIN, HIGH);
+        digitalWrite(ALARMPIN, HIGH);
 #endif
 
 #ifdef USE_LED
-      ledoff();
+        ledoff();
 #endif
 
 #ifdef SEND_ALARM_EMAIL
-      SMTPSend("Off", SMOKE_ALARM_LOCATION);
+        SMTPSend("Off", SMOKE_ALARM_LOCATION);
 #endif
+      }
+      else
+      {
+#ifdef USE_HIGH_ALARM
+        digitalWrite(ALARMPIN, HIGH);
+#else
+        digitalWrite(ALARMPIN, LOW);
+#endif
+#ifdef USE_LED
+        ledred();
+#endif
+
+#ifdef SEND_ALARM_EMAIL
+        SMTPSend("On", SMOKE_ALARM_LOCATION);
+#endif
+      }
     }
     else
     {
-#ifdef USE_HIGH_ALARM
-      digitalWrite(ALARMPIN, HIGH);
-#else
-      digitalWrite(ALARMPIN, LOW);
-#endif
-#ifdef USE_LED
-      ledred();
-#endif
-
-#ifdef SEND_ALARM_EMAIL
-      SMTPSend("On", SMOKE_ALARM_LOCATION);
-#endif
+      smokeCheckInterrupt = false;
     }
-  }
-  else
-  {
-    smokeCheckInterrupt = false;
   }
 }
 
@@ -221,7 +226,7 @@ void ledyellow () {
 
 void setup() {
   delay(100);
-#ifdef DEBUG  
+#ifdef DEBUG
   Serial.begin(115200);
   Serial.println("Begin");
 #endif
@@ -283,12 +288,13 @@ void setup() {
   // Get time from network time service
 #ifdef DEBUG
   Serial.println("WIFI Connected");
-#endif  
+#endif
   drawProgress("连接WIFI成功,", "正在同步时间...");
   configTime(TZ_SEC, DST_SEC, "pool.ntp.org");
   drawProgress("同步时间成功,", "正在更新天气数据...");
   updateData(true);
   timeSinceLastWUpdate = millis();
+  timeSinceSystemBoot = millis();
   attachInterrupt(digitalPinToInterrupt(SMOKEPIN), smokeHandler, CHANGE);
 }
 
@@ -328,7 +334,7 @@ void loop() {
     Serial.println(fltHumidity);
     Serial.print("CTemp: ");
     Serial.println(fltCTemp);
-#endif    
+#endif
     if (isnan(fltCTemp) || isnan(fltHumidity))
     {
     }
