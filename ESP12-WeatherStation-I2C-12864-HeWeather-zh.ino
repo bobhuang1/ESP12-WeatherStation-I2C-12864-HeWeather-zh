@@ -22,7 +22,7 @@
 #define USE_LED              // diable to NOT use LEDs, enable to use LEDs
 //#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
 #define LANGUAGE_CN  // LANGUAGE_CN or LANGUAGE_EN
-const String SMOKE_ALARM_LOCATION = "1st Foor Server Room"; // Office Server Room, Office Big Room, Office Office
+const String SMOKE_ALARM_LOCATION = "2nd Foor TV"; // Office Server Room, Office Big Room, Office Office
 #define DUMMY_MODE
 #define SEND_ALARM_EMAIL
 
@@ -128,7 +128,7 @@ float previousTemp = 0;
 float previousHumidity = 0;
 
 long timeSinceLastPageUpdate = 0;
-#define PAGE_UPDATE_INTERVAL 15*1000
+#define PAGE_UPDATE_INTERVAL 3*1000
 
 volatile boolean smokeCheckInterrupt = false;
 unsigned long smokeDebounceTime = 1000 * 10; // 10 seconds debounce time
