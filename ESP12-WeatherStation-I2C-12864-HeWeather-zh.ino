@@ -278,6 +278,8 @@ void setup() {
            );
   delay(1000);
 
+  drawProgress("连接WIFI中,", "请稍等...");
+
   connectWIFI(
 #ifdef USE_WIFI_MANAGER
     true
