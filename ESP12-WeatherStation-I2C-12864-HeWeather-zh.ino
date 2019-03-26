@@ -141,7 +141,10 @@ void smokeHandler() {
 }
 
 void smokeCheckInterruptSub() {
-  if ((millis() - timeSinceSystemBoot) > SMOKE_DISABLE_PERIOD)
+  nowTime = time(nullptr);
+  struct tm* timeInfo;
+  timeInfo = localtime(&nowTime);
+  if (timeInfo->tm_year > 99 && (millis() - timeSinceSystemBoot) > SMOKE_DISABLE_PERIOD)
   {
     if (smokeCheckInterrupt == true && ( (millis() - smokeLastDebounce)  > smokeDebounceTime ))
     {
