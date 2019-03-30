@@ -16,15 +16,19 @@
 #include "GarfieldCommon.h"
 
 //#define DEBUG
+#define SERIAL_NUMBER 200
 //#define USE_WIFI_MANAGER     // disable to NOT use WiFi manager, enable to use
-//#define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show
+#define LANGUAGE_CN  // LANGUAGE_CN or LANGUAGE_EN
+
+#if SERIAL_NUMBER == 200
 #define USE_HIGH_ALARM       // disable - LOW alarm sounds, enable - HIGH alarm sounds
 #define USE_LED              // diable to NOT use LEDs, enable to use LEDs
 //#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
-#define LANGUAGE_CN  // LANGUAGE_CN or LANGUAGE_EN
-const String SMOKE_ALARM_LOCATION = "2nd Foor TV"; // Office Server Room, Office Big Room, Office Office
+//#define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show
 #define DUMMY_MODE
 #define SEND_ALARM_EMAIL
+#endif
+
 
 #define DHTTYPE  DHT11       // Sensor type DHT11/21/22/AM2301/AM2302
 #define SMOKEPIN   2
@@ -45,6 +49,10 @@ const String SMOKE_ALARM_LOCATION = "2nd Foor TV"; // Office Server Room, Office
 #if (DHTPIN >= 0)
 DHT dht(DHTPIN, DHTTYPE);
 #endif
+
+float humidity_ratio = 100;
+float temperature_corretion = 0;
+String smokeAlarmLocation = "Default";
 
 #ifdef LANGUAGE_CN
 const String HEWEATHER_LANGUAGE = "zh"; // zh for Chinese, en for English
@@ -165,7 +173,7 @@ void smokeCheckInterruptSub() {
 #endif
 
 #ifdef SEND_ALARM_EMAIL
-        SMTPSend("Off", SMOKE_ALARM_LOCATION);
+        SMTPSend("Off", smokeAlarmLocation);
 #endif
       }
       else
@@ -180,7 +188,7 @@ void smokeCheckInterruptSub() {
 #endif
 
 #ifdef SEND_ALARM_EMAIL
-        SMTPSend("On", SMOKE_ALARM_LOCATION);
+        SMTPSend("On", smokeAlarmLocation);
 #endif
       }
     }
@@ -296,6 +304,9 @@ void setup() {
 #endif
   drawProgress("连接WIFI成功,", "正在同步时间...");
   configTime(TZ_SEC, DST_SEC, "pool.ntp.org");
+  readHumidityValuesWebSite(humidity_ratio, SERIAL_NUMBER);
+  readTemperatureValuesWebSite(temperature_corretion, SERIAL_NUMBER);
+  readLocationValuesWebSite(smokeAlarmLocation, SERIAL_NUMBER);
   drawProgress("同步时间成功,", "正在更新天气数据...");
   updateData(true);
   timeSinceLastWUpdate = millis();
@@ -332,8 +343,8 @@ void loop() {
 #if (DHTPIN >= 0)
   if (dht.read())
   {
-    float fltHumidity = dht.readHumidity();
-    float fltCTemp = dht.readTemperature() - 1.5;
+    float fltHumidity = dht.readHumidity() * humidity_ratio / 100;
+    float fltCTemp = dht.readTemperature() + temperature_corretion;
 #ifdef DEBUG
     Serial.print("Humidity: ");
     Serial.println(fltHumidity);
