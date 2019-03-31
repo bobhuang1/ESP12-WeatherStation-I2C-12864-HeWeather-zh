@@ -16,7 +16,7 @@
 #include "GarfieldCommon.h"
 
 //#define DEBUG
-#define SERIAL_NUMBER 204
+#define SERIAL_NUMBER 207
 //#define USE_WIFI_MANAGER     // disable to NOT use WiFi manager, enable to use
 #define LANGUAGE_CN  // LANGUAGE_CN or LANGUAGE_EN
 
@@ -60,6 +60,33 @@
 #define USE_HIGH_ALARM       // disable - LOW alarm sounds, enable - HIGH alarm sounds
 #define USE_LED              // diable to NOT use LEDs, enable to use LEDs
 #define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
+//#define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show
+#define DUMMY_MODE
+#define SEND_ALARM_EMAIL
+#endif
+
+#if SERIAL_NUMBER == 205
+#define USE_HIGH_ALARM       // disable - LOW alarm sounds, enable - HIGH alarm sounds
+#define USE_LED              // diable to NOT use LEDs, enable to use LEDs
+//#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
+//#define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show
+#define DUMMY_MODE
+#define SEND_ALARM_EMAIL
+#endif
+
+#if SERIAL_NUMBER == 206
+//#define USE_HIGH_ALARM       // disable - LOW alarm sounds, enable - HIGH alarm sounds
+//#define USE_LED              // diable to NOT use LEDs, enable to use LEDs
+//#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
+//#define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show
+#define DUMMY_MODE
+#define SEND_ALARM_EMAIL
+#endif
+
+#if SERIAL_NUMBER == 207
+#define USE_HIGH_ALARM       // disable - LOW alarm sounds, enable - HIGH alarm sounds
+#define USE_LED              // diable to NOT use LEDs, enable to use LEDs
+//#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
 //#define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show
 #define DUMMY_MODE
 #define SEND_ALARM_EMAIL
