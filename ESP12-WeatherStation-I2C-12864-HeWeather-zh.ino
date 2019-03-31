@@ -16,7 +16,7 @@
 #include "GarfieldCommon.h"
 
 //#define DEBUG
-#define SERIAL_NUMBER 201
+#define SERIAL_NUMBER 204
 //#define USE_WIFI_MANAGER     // disable to NOT use WiFi manager, enable to use
 #define LANGUAGE_CN  // LANGUAGE_CN or LANGUAGE_EN
 
@@ -35,6 +35,33 @@
 //#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
 #define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show
 //#define DUMMY_MODE
+#define SEND_ALARM_EMAIL
+#endif
+
+#if SERIAL_NUMBER == 202
+#define USE_HIGH_ALARM       // disable - LOW alarm sounds, enable - HIGH alarm sounds
+#define USE_LED              // diable to NOT use LEDs, enable to use LEDs
+//#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
+//#define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show
+#define DUMMY_MODE
+#define SEND_ALARM_EMAIL
+#endif
+
+#if SERIAL_NUMBER == 203
+#define USE_HIGH_ALARM       // disable - LOW alarm sounds, enable - HIGH alarm sounds
+#define USE_LED              // diable to NOT use LEDs, enable to use LEDs
+//#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
+//#define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show
+#define DUMMY_MODE
+#define SEND_ALARM_EMAIL
+#endif
+
+#if SERIAL_NUMBER == 204
+#define USE_HIGH_ALARM       // disable - LOW alarm sounds, enable - HIGH alarm sounds
+#define USE_LED              // diable to NOT use LEDs, enable to use LEDs
+#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
+//#define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show
+#define DUMMY_MODE
 #define SEND_ALARM_EMAIL
 #endif
 
@@ -133,8 +160,11 @@ HeWeatherCurrent currentWeatherClient2;
 HeWeatherForecastData forecasts[MAX_FORECASTS];
 HeWeatherForecast forecastClient;
 
-// 4 CS, 5 SID(data), 6 CLK, 17 RST(Reset)
+#if SERIAL_NUMBER == 202
+U8G2_ST7920_128X64_F_SW_SPI display(U8G2_R0, /* clo  ck=*/ 14 /* A4 */ , /* data=*/ 12 /* A2 */, /* CS=*/ 13 /* A3 */, /* reset=*/ U8X8_PIN_NONE); // 16, U8X8_PIN_NONE
+#else
 U8G2_ST7920_128X64_F_SW_SPI display(U8G2_R0, /* clo  ck=*/ 14 /* A4 */ , /* data=*/ 12 /* A2 */, /* CS=*/ 13 /* A3 */, /* reset=*/ 16); // 16, U8X8_PIN_NONE
+#endif
 
 time_t nowTime;
 const String degree = String((char)176);
