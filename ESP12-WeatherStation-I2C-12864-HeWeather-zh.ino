@@ -206,6 +206,7 @@ long timeSinceSystemBoot = 0;
 volatile boolean smokeCheckInterrupt = false;
 unsigned long smokeDebounceTime = 1000 * 10; // 10 seconds debounce time
 unsigned long smokeLastDebounce = 0;
+int previousSmokeValue = 0;
 
 void smokeHandler() {
   smokeCheckInterrupt = true;
@@ -222,39 +223,42 @@ void smokeCheckInterruptSub() {
       smokeLastDebounce = millis();
       smokeCheckInterrupt = false;
       int smokeValue = digitalRead(SMOKEPIN);
-
-      if (smokeValue == 1)
+      if (smokeValue != previousSmokeValue)
       {
+        previousSmokeValue = smokeValue;
+        if (smokeValue == 1)
+        {
 #ifdef USE_HIGH_ALARM
-        digitalWrite(ALARMPIN, LOW);
+          digitalWrite(ALARMPIN, LOW);
 #else
-        digitalWrite(ALARMPIN, HIGH);
+          digitalWrite(ALARMPIN, HIGH);
 #endif
 
 #ifdef USE_LED
-        ledoff();
+          ledoff();
 #endif
-        if (sendAlarmEmail)
-        {
-          SMTPSend("Off", alarmEmailAddress, Location);
+          if (sendAlarmEmail)
+          {
+            SMTPSend("Off", alarmEmailAddress, Location);
+          }
+          writeDataWebSite(SERIAL_NUMBER, previousTemp, previousHumidity, currentWeather.tmp, currentWeather.hum, 0);
         }
-        writeDataWebSite(SERIAL_NUMBER, previousTemp, previousHumidity, currentWeather.tmp, currentWeather.hum, 0);
-      }
-      else
-      {
+        else
+        {
 #ifdef USE_HIGH_ALARM
-        digitalWrite(ALARMPIN, HIGH);
+          digitalWrite(ALARMPIN, HIGH);
 #else
-        digitalWrite(ALARMPIN, LOW);
+          digitalWrite(ALARMPIN, LOW);
 #endif
 #ifdef USE_LED
-        ledred();
+          ledred();
 #endif
-        if (sendAlarmEmail)
-        {
-          SMTPSend("On", alarmEmailAddress, Location);
+          if (sendAlarmEmail)
+          {
+            SMTPSend("On", alarmEmailAddress, Location);
+          }
+          writeDataWebSite(SERIAL_NUMBER, previousTemp, previousHumidity, currentWeather.tmp, currentWeather.hum, 1);
         }
-        writeDataWebSite(SERIAL_NUMBER, previousTemp, previousHumidity, currentWeather.tmp, currentWeather.hum, 1);
       }
     }
     else
@@ -408,6 +412,7 @@ void setup() {
   updateData(true);
   timeSinceLastWUpdate = millis();
   timeSinceSystemBoot = millis();
+  previousSmokeValue = digitalRead(SMOKEPIN);
   attachInterrupt(digitalPinToInterrupt(SMOKEPIN), smokeHandler, CHANGE);
 }
 
