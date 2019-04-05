@@ -200,16 +200,41 @@ float previousHumidity = 0;
 
 long timeSinceLastPageUpdate = 0;
 #define PAGE_UPDATE_INTERVAL 3*1000
+
 long timeSinceSystemBoot = 0;
 #define SMOKE_DISABLE_PERIOD 60*1000
-
-volatile boolean smokeCheckInterrupt = false;
 unsigned long smokeDebounceTime = 1000 * 10; // 10 seconds debounce time
 unsigned long smokeLastDebounce = 0;
 int previousSmokeValue = 0;
+volatile boolean smokeSendEmail = false;
 
 void smokeHandler() {
-  smokeCheckInterrupt = true;
+  int smokeValue = digitalRead(SMOKEPIN);
+  Serial.print("Smoke interrupt: ");
+  Serial.println(smokeValue);
+  smokeSendEmail = true;
+  if (smokeValue == 1)
+  {
+#ifdef USE_HIGH_ALARM
+    digitalWrite(ALARMPIN, LOW);
+#else
+    digitalWrite(ALARMPIN, HIGH);
+#endif
+#ifdef USE_LED
+    ledoff();
+#endif
+  }
+  else
+  {
+#ifdef USE_HIGH_ALARM
+    digitalWrite(ALARMPIN, HIGH);
+#else
+    digitalWrite(ALARMPIN, LOW);
+#endif
+#ifdef USE_LED
+    ledred();
+#endif
+  }
 }
 
 void smokeCheckInterruptSub() {
@@ -218,25 +243,18 @@ void smokeCheckInterruptSub() {
   timeInfo = localtime(&nowTime);
   if (timeInfo->tm_year > 99 && (millis() - timeSinceSystemBoot) > SMOKE_DISABLE_PERIOD)
   {
-    if (smokeCheckInterrupt == true && ( (millis() - smokeLastDebounce)  > smokeDebounceTime ))
+    if (smokeSendEmail == true && ( (millis() - smokeLastDebounce)  > smokeDebounceTime ))
     {
+      Serial.println("Debounce OK");
       smokeLastDebounce = millis();
-      smokeCheckInterrupt = false;
+      smokeSendEmail = false;
       int smokeValue = digitalRead(SMOKEPIN);
       if (smokeValue != previousSmokeValue)
       {
+        Serial.println("New and old value different");
         previousSmokeValue = smokeValue;
         if (smokeValue == 1)
         {
-#ifdef USE_HIGH_ALARM
-          digitalWrite(ALARMPIN, LOW);
-#else
-          digitalWrite(ALARMPIN, HIGH);
-#endif
-
-#ifdef USE_LED
-          ledoff();
-#endif
           if (sendAlarmEmail)
           {
             SMTPSend("Off", alarmEmailAddress, Location);
@@ -245,25 +263,14 @@ void smokeCheckInterruptSub() {
         }
         else
         {
-#ifdef USE_HIGH_ALARM
-          digitalWrite(ALARMPIN, HIGH);
-#else
-          digitalWrite(ALARMPIN, LOW);
-#endif
-#ifdef USE_LED
-          ledred();
-#endif
           if (sendAlarmEmail)
           {
             SMTPSend("On", alarmEmailAddress, Location);
           }
           writeDataWebSite(SERIAL_NUMBER, previousTemp, previousHumidity, currentWeather.tmp, currentWeather.hum, 1);
         }
+        smokeSendEmail = false;
       }
-    }
-    else
-    {
-      smokeCheckInterrupt = false;
     }
   }
 }
