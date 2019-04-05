@@ -25,8 +25,6 @@
 #define USE_LED              // diable to NOT use LEDs, enable to use LEDs
 //#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
 //#define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show
-#define DUMMY_MODE
-#define SEND_ALARM_EMAIL
 #endif
 
 #if SERIAL_NUMBER == 201
@@ -34,8 +32,6 @@
 #define USE_LED              // diable to NOT use LEDs, enable to use LEDs
 //#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
 #define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show
-//#define DUMMY_MODE
-#define SEND_ALARM_EMAIL
 #endif
 
 #if SERIAL_NUMBER == 202
@@ -43,8 +39,6 @@
 #define USE_LED              // diable to NOT use LEDs, enable to use LEDs
 //#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
 //#define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show
-#define DUMMY_MODE
-#define SEND_ALARM_EMAIL
 #endif
 
 #if SERIAL_NUMBER == 203
@@ -52,8 +46,6 @@
 #define USE_LED              // diable to NOT use LEDs, enable to use LEDs
 //#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
 //#define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show
-#define DUMMY_MODE
-#define SEND_ALARM_EMAIL
 #endif
 
 #if SERIAL_NUMBER == 204
@@ -61,8 +53,6 @@
 #define USE_LED              // diable to NOT use LEDs, enable to use LEDs
 #define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
 //#define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show
-#define DUMMY_MODE
-#define SEND_ALARM_EMAIL
 #endif
 
 #if SERIAL_NUMBER == 205
@@ -70,8 +60,6 @@
 #define USE_LED              // diable to NOT use LEDs, enable to use LEDs
 //#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
 //#define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show
-#define DUMMY_MODE
-#define SEND_ALARM_EMAIL
 #endif
 
 #if SERIAL_NUMBER == 206
@@ -79,8 +67,6 @@
 //#define USE_LED              // diable to NOT use LEDs, enable to use LEDs
 //#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
 //#define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show
-#define DUMMY_MODE
-#define SEND_ALARM_EMAIL
 #endif
 
 #if SERIAL_NUMBER == 207
@@ -88,9 +74,24 @@
 #define USE_LED              // diable to NOT use LEDs, enable to use LEDs
 //#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
 //#define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show
-#define DUMMY_MODE
-#define SEND_ALARM_EMAIL
 #endif
+
+String Location = SERIAL_NUMBER + " Default";
+String Token = "Token";
+int Resistor = 80000;
+bool dummyMode = false;
+bool backlightOffMode = false;
+bool sendAlarmEmail = false;
+String alarmEmailAddress = "Email";
+int displayContrast = 128;
+int displayMultiplier = 100;
+int displayBias = 0;
+int displayMinimumLevel = 1;
+int displayMaximumLevel = 1023;
+int temperatureMultiplier = 100;
+int temperatureBias = 0;
+int humidityMultiplier = 100;
+int humidityBias = 0;
 
 
 #define DHTTYPE  DHT11       // Sensor type DHT11/21/22/AM2301/AM2302
@@ -112,10 +113,6 @@
 #if (DHTPIN >= 0)
 DHT dht(DHTPIN, DHTTYPE);
 #endif
-
-float humidity_ratio = 100;
-float temperature_corretion = 0;
-String smokeAlarmLocation = "Default";
 
 #ifdef LANGUAGE_CN
 const String HEWEATHER_LANGUAGE = "zh"; // zh for Chinese, en for English
@@ -237,10 +234,11 @@ void smokeCheckInterruptSub() {
 #ifdef USE_LED
         ledoff();
 #endif
-
-#ifdef SEND_ALARM_EMAIL
-        SMTPSend("Off", smokeAlarmLocation);
-#endif
+        if (sendAlarmEmail)
+        {
+          SMTPSend("Off", alarmEmailAddress, Location);
+        }
+        writeDataWebSite(SERIAL_NUMBER, previousTemp, previousHumidity, currentWeather.tmp, currentWeather.hum, 0);
       }
       else
       {
@@ -252,10 +250,11 @@ void smokeCheckInterruptSub() {
 #ifdef USE_LED
         ledred();
 #endif
-
-#ifdef SEND_ALARM_EMAIL
-        SMTPSend("On", smokeAlarmLocation);
-#endif
+        if (sendAlarmEmail)
+        {
+          SMTPSend("On", alarmEmailAddress, Location);
+        }
+        writeDataWebSite(SERIAL_NUMBER, previousTemp, previousHumidity, currentWeather.tmp, currentWeather.hum, 1);
       }
     }
     else
@@ -370,9 +369,41 @@ void setup() {
 #endif
   drawProgress("连接WIFI成功,", "正在同步时间...");
   configTime(TZ_SEC, DST_SEC, "pool.ntp.org");
-  readHumidityValuesWebSite(humidity_ratio, SERIAL_NUMBER);
-  readTemperatureValuesWebSite(temperature_corretion, SERIAL_NUMBER);
-  readLocationValuesWebSite(smokeAlarmLocation, SERIAL_NUMBER);
+  writeBootWebSite(SERIAL_NUMBER);
+  readValueWebSite(SERIAL_NUMBER, Location, Token, Resistor, dummyMode, backlightOffMode, sendAlarmEmail, alarmEmailAddress, displayContrast, displayMultiplier, displayBias, displayMinimumLevel, displayMaximumLevel, temperatureMultiplier, temperatureBias, humidityMultiplier, humidityBias);
+  Serial.print("Location: ");
+  Serial.println(Location);
+  Serial.print("Token: ");
+  Serial.println(Token);
+  Serial.print("Resistor: ");
+  Serial.println(Resistor);
+  Serial.print("dummyMode: ");
+  Serial.println(dummyMode);
+  Serial.print("backlightOffMode: ");
+  Serial.println(backlightOffMode);
+  Serial.print("sendAlarmEmail: ");
+  Serial.println(sendAlarmEmail);
+  Serial.print("alarmEmailAddress: ");
+  Serial.println(alarmEmailAddress);
+  Serial.print("displayContrast: ");
+  Serial.println(displayContrast);
+  Serial.print("displayMultiplier: ");
+  Serial.println(displayMultiplier);
+  Serial.print("displayBias: ");
+  Serial.println(displayBias);
+  Serial.print("displayMinimumLevel: ");
+  Serial.println(displayMinimumLevel);
+  Serial.print("displayMaximumLevel: ");
+  Serial.println(displayMaximumLevel);
+  Serial.print("temperatureMultiplier: ");
+  Serial.println(temperatureMultiplier);
+  Serial.print("temperatureBias: ");
+  Serial.println(temperatureBias);
+  Serial.print("humidityMultiplier: ");
+  Serial.println(humidityMultiplier);
+  Serial.print("humidityBias: ");
+  Serial.println(humidityBias);
+  Serial.println("");
   drawProgress("同步时间成功,", "正在更新天气数据...");
   updateData(true);
   timeSinceLastWUpdate = millis();
@@ -409,8 +440,8 @@ void loop() {
 #if (DHTPIN >= 0)
   if (dht.read())
   {
-    float fltHumidity = dht.readHumidity() * humidity_ratio / 100;
-    float fltCTemp = dht.readTemperature() + temperature_corretion;
+    float fltHumidity = dht.readHumidity() * humidityMultiplier / 100 + humidityBias;
+    float fltCTemp = dht.readTemperature() * temperatureMultiplier / 100 + temperatureBias;
 #ifdef DEBUG
     Serial.print("Humidity: ");
     Serial.println(fltHumidity);
@@ -423,7 +454,14 @@ void loop() {
     else
     {
       previousTemp = fltCTemp;
-      previousHumidity = fltHumidity;
+      if (fltHumidity <= 100)
+      {
+        previousHumidity = fltHumidity;
+      }
+      else
+      {
+        previousHumidity = 100;
+      }
     }
   }
 #endif
@@ -456,9 +494,10 @@ void draw(void) {
   }
 
   //    display.drawXBM(31, 0, 66, 64, garfield);
-#ifdef DUMMY_MODE
-  draw_state = 1;
-#endif
+  if (dummyMode)
+  {
+    draw_state = 1;
+  }
   if (draw_state >= 0 && draw_state < 2)
   {
     drawLocal();
@@ -511,32 +550,33 @@ void updateData(bool isInitialBoot) {
   }
   currentWeatherClient.updateCurrent(&currentWeather, HEWEATHER_APP_ID, HEWEATHER_LOCATION, HEWEATHER_LANGUAGE);
 
-#ifndef DUMMY_MODE
+  if (!dummyMode)
+  {
 #ifdef SHOW_US_CITIES
-  delay(300);
-  if (isInitialBoot)
-  {
-    drawProgress("正在更新...", "纽约天气实况...");
-  }
-  currentWeatherClient1.updateCurrent(&currentWeather1, HEWEATHER_APP_ID, HEWEATHER_LOCATION1, HEWEATHER_LANGUAGE);
-  delay(300);
-  if (isInitialBoot)
-  {
-    drawProgress("正在更新...", "弗利蒙天气实况...");
-  }
-  currentWeatherClient2.updateCurrent(&currentWeather2, HEWEATHER_APP_ID, HEWEATHER_LOCATION2, HEWEATHER_LANGUAGE);
-#endif
-
-  if (isInitialBoot || timeInfo->tm_hour == 0 || timeInfo->tm_hour == 8 || timeInfo->tm_hour == 11 || timeInfo->tm_hour == 18)
-  {
     delay(300);
     if (isInitialBoot)
     {
-      drawProgress("正在更新...", "本地天气预报...");
+      drawProgress("正在更新...", "纽约天气实况...");
     }
-    int result = forecastClient.updateForecast(forecasts, HEWEATHER_APP_ID, HEWEATHER_LOCATION, HEWEATHER_LANGUAGE);
-  }
+    currentWeatherClient1.updateCurrent(&currentWeather1, HEWEATHER_APP_ID, HEWEATHER_LOCATION1, HEWEATHER_LANGUAGE);
+    delay(300);
+    if (isInitialBoot)
+    {
+      drawProgress("正在更新...", "弗利蒙天气实况...");
+    }
+    currentWeatherClient2.updateCurrent(&currentWeather2, HEWEATHER_APP_ID, HEWEATHER_LOCATION2, HEWEATHER_LANGUAGE);
 #endif
+
+    if (isInitialBoot || timeInfo->tm_hour == 0 || timeInfo->tm_hour == 8 || timeInfo->tm_hour == 11 || timeInfo->tm_hour == 18)
+    {
+      delay(300);
+      if (isInitialBoot)
+      {
+        drawProgress("正在更新...", "本地天气预报...");
+      }
+      int result = forecastClient.updateForecast(forecasts, HEWEATHER_APP_ID, HEWEATHER_LOCATION, HEWEATHER_LANGUAGE);
+    }
+  }
   readyForWeatherUpdate = false;
 }
 
