@@ -11,72 +11,33 @@
 #include <U8g2lib.h>
 #include <SPI.h>
 #include <WiFiManager.h>
+#include <ESP8266httpUpdate.h>
 #include "HeWeatherCurrent.h"
 #include "HeWeatherForecast.h"
 #include "GarfieldCommon.h"
 
+#define CURRENT_VERSION 1
 //#define DEBUG
-#define SERIAL_NUMBER 207
 //#define USE_WIFI_MANAGER     // disable to NOT use WiFi manager, enable to use
 #define LANGUAGE_CN  // LANGUAGE_CN or LANGUAGE_EN
+//#define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show; enable only for serial 201. Disable for all other serial
+#define USE_HIGH_ALARM       // disable - LOW alarm sounds, enable - HIGH alarm sounds. Enable for serial 200 201 202 203 204 205 207. Disable only for serial 206
+//#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED. Enable for serial 204, 206, 207. Disable for serial 200, 201, 202, 203, 205
 
-#if SERIAL_NUMBER == 200
-#define USE_HIGH_ALARM       // disable - LOW alarm sounds, enable - HIGH alarm sounds
-#define USE_LED              // diable to NOT use LEDs, enable to use LEDs
-//#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
-//#define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show
+#ifdef USE_HIGH_ALARM
+#define USE_LED              // diable to NOT use LEDs, enable to use LEDs. Enable for serial 200, 201, 202, 203, 204, 205, 207. Disable only for serial 206.
 #endif
 
-#if SERIAL_NUMBER == 201
-#define USE_HIGH_ALARM       // disable - LOW alarm sounds, enable - HIGH alarm sounds
-#define USE_LED              // diable to NOT use LEDs, enable to use LEDs
-//#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
-#define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show
-#endif
 
-#if SERIAL_NUMBER == 202
-#define USE_HIGH_ALARM       // disable - LOW alarm sounds, enable - HIGH alarm sounds
-#define USE_LED              // diable to NOT use LEDs, enable to use LEDs
-//#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
-//#define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show
-#endif
+// BIN files:
+// 200.bin: for 200, 201, 202, 203, 205
+// 204.bin for 204, 207
+// 206.bin for 206
 
-#if SERIAL_NUMBER == 203
-#define USE_HIGH_ALARM       // disable - LOW alarm sounds, enable - HIGH alarm sounds
-#define USE_LED              // diable to NOT use LEDs, enable to use LEDs
-//#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
-//#define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show
-#endif
 
-#if SERIAL_NUMBER == 204
-#define USE_HIGH_ALARM       // disable - LOW alarm sounds, enable - HIGH alarm sounds
-#define USE_LED              // diable to NOT use LEDs, enable to use LEDs
-#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
-//#define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show
-#endif
-
-#if SERIAL_NUMBER == 205
-#define USE_HIGH_ALARM       // disable - LOW alarm sounds, enable - HIGH alarm sounds
-#define USE_LED              // diable to NOT use LEDs, enable to use LEDs
-//#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
-//#define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show
-#endif
-
-#if SERIAL_NUMBER == 206
-//#define USE_HIGH_ALARM       // disable - LOW alarm sounds, enable - HIGH alarm sounds
-//#define USE_LED              // diable to NOT use LEDs, enable to use LEDs
-//#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
-//#define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show
-#endif
-
-#if SERIAL_NUMBER == 207
-#define USE_HIGH_ALARM       // disable - LOW alarm sounds, enable - HIGH alarm sounds
-#define USE_LED              // diable to NOT use LEDs, enable to use LEDs
-//#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED
-//#define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show
-#endif
-
-String Location = SERIAL_NUMBER + " Default";
+// Serial 200 to 207
+int serialNumber = -1;
+String Location = "Default";
 String Token = "Token";
 int Resistor = 80000;
 bool dummyMode = false;
@@ -92,6 +53,8 @@ int temperatureMultiplier = 100;
 int temperatureBias = 0;
 int humidityMultiplier = 100;
 int humidityBias = 0;
+int firmwareversion = 0;
+String firmwareBin = "";
 
 
 #define DHTTYPE  DHT11       // Sensor type DHT11/21/22/AM2301/AM2302
@@ -184,11 +147,8 @@ HeWeatherCurrent currentWeatherClient2;
 HeWeatherForecastData forecasts[MAX_FORECASTS];
 HeWeatherForecast forecastClient;
 
-#if SERIAL_NUMBER == 202
 U8G2_ST7920_128X64_F_SW_SPI display(U8G2_R0, /* clo  ck=*/ 14 /* A4 */ , /* data=*/ 12 /* A2 */, /* CS=*/ 13 /* A3 */, /* reset=*/ U8X8_PIN_NONE); // 16, U8X8_PIN_NONE
-#else
-U8G2_ST7920_128X64_F_SW_SPI display(U8G2_R0, /* clo  ck=*/ 14 /* A4 */ , /* data=*/ 12 /* A2 */, /* CS=*/ 13 /* A3 */, /* reset=*/ 16); // 16, U8X8_PIN_NONE
-#endif
+//U8G2_ST7920_128X64_F_SW_SPI display(U8G2_R0, /* clo  ck=*/ 14 /* A4 */ , /* data=*/ 12 /* A2 */, /* CS=*/ 13 /* A3 */, /* reset=*/ 16); // 16, U8X8_PIN_NONE, serial 202 has reset pin removed!!!
 
 time_t nowTime;
 const String degree = String((char)176);
@@ -202,7 +162,7 @@ long timeSinceLastPageUpdate = 0;
 #define PAGE_UPDATE_INTERVAL 3*1000
 
 long timeSinceSystemBoot = 0;
-#define SMOKE_DISABLE_PERIOD 60*1000
+#define SMOKE_DISABLE_PERIOD 120*1000
 unsigned long smokeDebounceTime = 1000 * 10; // 10 seconds debounce time
 unsigned long smokeLastDebounce = 0;
 int previousSmokeValue = 0;
@@ -241,6 +201,15 @@ void smokeCheckInterruptSub() {
   nowTime = time(nullptr);
   struct tm* timeInfo;
   timeInfo = localtime(&nowTime);
+
+  if (timeSinceSystemBoot == 0)
+  {
+    if (timeInfo->tm_year > 99)
+    {
+      timeSinceSystemBoot = millis();
+    }
+  }
+
   if (timeInfo->tm_year > 99 && (millis() - timeSinceSystemBoot) > SMOKE_DISABLE_PERIOD)
   {
     if (smokeSendEmail == true && ( (millis() - smokeLastDebounce)  > smokeDebounceTime ))
@@ -259,7 +228,7 @@ void smokeCheckInterruptSub() {
           {
             SMTPSend("Off", alarmEmailAddress, Location);
           }
-          writeDataWebSite(SERIAL_NUMBER, previousTemp, previousHumidity, currentWeather.tmp, currentWeather.hum, 0);
+          writeDataWebSite(serialNumber, previousTemp, previousHumidity, currentWeather.tmp, currentWeather.hum, 0);
         }
         else
         {
@@ -267,7 +236,7 @@ void smokeCheckInterruptSub() {
           {
             SMTPSend("On", alarmEmailAddress, Location);
           }
-          writeDataWebSite(SERIAL_NUMBER, previousTemp, previousHumidity, currentWeather.tmp, currentWeather.hum, 1);
+          writeDataWebSite(serialNumber, previousTemp, previousHumidity, currentWeather.tmp, currentWeather.hum, 1);
         }
         smokeSendEmail = false;
       }
@@ -362,7 +331,7 @@ void setup() {
            );
   delay(1000);
 
-  drawProgress(String(CompileDate), String(SERIAL_NUMBER));
+  drawProgress(String(CompileDate), "Version: " + String(CURRENT_VERSION));
   delay(1000);
 
 #ifdef USE_WIFI_MANAGER
@@ -387,8 +356,24 @@ void setup() {
 #endif
   drawProgress("连接WIFI成功,", "正在同步时间...");
   configTime(TZ_SEC, DST_SEC, "pool.ntp.org");
-  writeBootWebSite(SERIAL_NUMBER);
-  readValueWebSite(SERIAL_NUMBER, Location, Token, Resistor, dummyMode, backlightOffMode, sendAlarmEmail, alarmEmailAddress, displayContrast, displayMultiplier, displayBias, displayMinimumLevel, displayMaximumLevel, temperatureMultiplier, temperatureBias, humidityMultiplier, humidityBias);
+  readValueWebSite(serialNumber, Location, Token, Resistor, dummyMode, backlightOffMode, sendAlarmEmail, alarmEmailAddress, displayContrast, displayMultiplier, displayBias, displayMinimumLevel, displayMaximumLevel, temperatureMultiplier, temperatureBias, humidityMultiplier, humidityBias, firmwareversion, firmwareBin);
+  if (serialNumber < 0)
+  {
+    drawProgress("新MAC " + String(WiFi.macAddress()), "序列号: " + String(serialNumber));
+    stopApp();
+  }
+  else if (serialNumber == 0)
+  {
+    drawProgress("多MAC " + String(WiFi.macAddress()), "找管理员处理");
+    stopApp();
+  }
+
+  drawProgress("Serial: " + String(serialNumber), "MAC: " + String(WiFi.macAddress()));
+  delay(1500);
+  Serial.print("MAC: ");
+  Serial.println(String(WiFi.macAddress()));
+  Serial.print("Serial: ");
+  Serial.println(serialNumber);
   Serial.print("Location: ");
   Serial.println(Location);
   Serial.print("Token: ");
@@ -421,7 +406,51 @@ void setup() {
   Serial.println(humidityMultiplier);
   Serial.print("humidityBias: ");
   Serial.println(humidityBias);
+  Serial.print("firmwareversion: ");
+  Serial.println(firmwareversion);
+  Serial.print("CURRENT_VERSION: ");
+  Serial.println(CURRENT_VERSION);
+  Serial.print("firmwareBin: ");
+  Serial.println(SETTINGS_BASE_URL + SETTINGS_OTA_BIN_URL + firmwareBin);
   Serial.println("");
+  writeBootWebSite(serialNumber);
+  if (firmwareversion > CURRENT_VERSION)
+  {
+    drawProgress("自动升级中!", "请稍候......");
+    Serial.println("Auto upgrade starting...");
+    ESPhttpUpdate.rebootOnUpdate(false);
+    t_httpUpdate_return ret = ESPhttpUpdate.update(SETTINGS_SERVER, 81, SETTINGS_BASE_URL + SETTINGS_OTA_BIN_URL + firmwareBin);
+    Serial.println("Auto upgrade finished.");
+    Serial.print("ret "); Serial.println(ret);
+    switch (ret) {
+      case HTTP_UPDATE_FAILED:
+        Serial.printf("HTTP_UPDATE_FAILED Error (%d): %s\n", ESPhttpUpdate.getLastError(), ESPhttpUpdate.getLastErrorString().c_str());
+        drawProgress("升级错误!", "重启!");
+        delay(2000);
+        ESP.restart();
+        break;
+      case HTTP_UPDATE_NO_UPDATES:
+        Serial.println("HTTP_UPDATE_NO_UPDATES");
+        drawProgress("无需升级!", "继续启动...");
+        delay(1500);
+        break;
+      case HTTP_UPDATE_OK:
+        Serial.println("HTTP_UPDATE_OK");
+        drawProgress("升级成功!", "重启...");
+        delay(2000);
+        ESP.restart();
+        break;
+      default:
+        Serial.print("Undefined HTTP_UPDATE Code: "); Serial.println(ret);
+        drawProgress("升级错误!", "重启!");
+        delay(2000);
+        ESP.restart();
+    }
+  }
+  else
+  {
+    drawProgress("无需自动升级!", "继续启动...");
+  }
   drawProgress("同步时间成功,", "正在更新天气数据...");
   updateData(true);
   timeSinceLastWUpdate = millis();
