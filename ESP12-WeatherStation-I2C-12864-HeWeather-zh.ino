@@ -22,7 +22,7 @@
 #define LANGUAGE_CN  // LANGUAGE_CN or LANGUAGE_EN
 //#define SHOW_US_CITIES  // disable to NOT to show Fremont and NY, enable to show; enable only for serial 201. Disable for all other serial
 #define USE_HIGH_ALARM       // disable - LOW alarm sounds, enable - HIGH alarm sounds. Enable for serial 200 201 202 203 204 205 207. Disable only for serial 206
-//#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED. Enable for serial 204, 206, 207. Disable for serial 200, 201, 202, 203, 205
+//#define USE_OLD_LED          // disable to use new type 3mm red-blue LED, enable to use old type 5mm red-green LED. Enable for serial 204, 206. Disable for serial 200, 201, 202, 203, 205, 207
 
 #ifdef USE_HIGH_ALARM
 #define USE_LED              // diable to NOT use LEDs, enable to use LEDs. Enable for serial 200, 201, 202, 203, 204, 205, 207. Disable only for serial 206.
@@ -30,8 +30,8 @@
 
 
 // BIN files:
-// 200.bin: for 200, 201, 202, 203, 205
-// 204.bin for 204, 207
+// 200.bin: for 200, 201, 202, 203, 205, 207
+// 204.bin for 204
 // 206.bin for 206
 
 
