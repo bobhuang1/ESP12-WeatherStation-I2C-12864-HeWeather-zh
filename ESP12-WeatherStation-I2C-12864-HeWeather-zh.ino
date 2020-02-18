@@ -16,7 +16,7 @@
 #include "HeWeatherForecast.h"
 #include "GarfieldCommon.h"
 
-#define CURRENT_VERSION 2
+#define CURRENT_VERSION 4
 //#define DEBUG
 //#define USE_WIFI_MANAGER     // disable to NOT use WiFi manager, enable to use
 #define LANGUAGE_CN  // LANGUAGE_CN or LANGUAGE_EN
